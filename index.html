@@ -218,46 +218,59 @@
     }
 
     // 加入群組：從雲端獲取資料
-    async function handleJoinGroup() {
-        const gid = document.getElementById('joinGroupId').value.trim().toUpperCase();
-        if (gid.length !== 4) return alert("請輸入 4 位代碼");
-        
-        document.getElementById('sync-status').innerText = "搜尋群組中...";
-        try {
-            const response = await fetch(GAS_URL);
-            const cloudData = await response.json();
-            
-            // 尋找該群組 ID 的專案
-            const projectKey = Object.keys(cloudData).find(key => key.startsWith('trip_') && cloudData[key].groupId === gid);
-            
-            if (projectKey) {
-                // 將該專案資訊加入本地
-                const projectData = cloudData[projectKey];
-                // 檢查本地是否已存在
-                if (!projects.find(p => p.groupId === gid)) {
-                    projects.push(projectData);
-                    localStorage.setItem('trip_projects', JSON.stringify(projects));
-                }
-                
-                // 同步該群組的所有相關資料
-                const pid = projectData.id;
-                const relatedKeys = [`records_${pid}`, `payers_${pid}`, `methods_${pid}`, `currencies_${pid}`];
-                relatedKeys.forEach(k => {
-                    if (cloudData[k]) localStorage.setItem(k, JSON.stringify(cloudData[k]));
-                });
-
-                alert(`成功加入旅程：${projectData.name}`);
-                closeModal('joinGroupModal');
-                showFullProjectList();
-                loadProjectList();
-            } else {
-                alert("找不到該群組，請確認代碼是否正確。");
-            }
-        } catch (e) {
-            alert("同步失敗，請稍後再試。");
-        }
+// 2. 修正加入群組的搜尋邏輯
+async function handleJoinGroup() {
+    const gid = document.getElementById('joinGroupId').value.trim().toUpperCase();
+    if (gid.length !== 4) {
+        alert("請輸入正確的 4 位代碼");
+        return;
     }
+    
+    document.getElementById('sync-status').innerText = "搜尋雲端群組中...";
+    
+    try {
+        // 從 GAS 獲取最新資料
+        const response = await fetch(GAS_URL);
+        const cloudData = await response.json();
+        
+        console.log("雲端資料讀取成功:", cloudData); // 除錯用
 
+        // 在雲端資料中尋找 trip_projects 這個 Key (這是你儲存專案列表的地方)
+        let remoteProjects = cloudData["trip_projects"] || [];
+        let targetProject = remoteProjects.find(p => p.groupId === gid);
+
+        if (targetProject) {
+            // 檢查本地是否已經有了，沒有才加
+            const exists = projects.find(p => p.groupId === gid || p.id === targetProject.id);
+            if (!exists) {
+                projects.push(targetProject);
+                localStorage.setItem('trip_projects', JSON.stringify(projects));
+            }
+            
+            // 下載該專案相關的所有明細 (records, payers 等)
+            const pid = targetProject.id;
+            const keysToSync = [`records_${pid}`, `payers_${pid}`, `methods_${pid}`, `currencies_${pid}`];
+            
+            keysToSync.forEach(key => {
+                if (cloudData[key]) {
+                    localStorage.setItem(key, JSON.stringify(cloudData[key]));
+                }
+            });
+
+            alert(`成功找到旅程：${targetProject.name}！系統已自動同步。`);
+            closeModal('joinGroupModal');
+            showFullProjectList();
+            loadProjectList();
+        } else {
+            alert("找不到該群組代碼 (" + gid + ")，請確認：\n1. 代碼是否正確\n2. 建立者是否已完成雲端同步");
+        }
+    } catch (e) {
+        console.error("同步錯誤:", e);
+        alert("連線失敗，請檢查網路或 GAS 網址是否正確。");
+    } finally {
+        document.getElementById('sync-status').innerText = "同步完成";
+    }
+}
     // --- UI 切換邏輯 ---
     function backToWelcome() {
         document.getElementById('project-screen').style.display = 'none';
@@ -310,30 +323,45 @@
         openModal('projectModal'); 
     }
 
-    function handleProjectSubmit() {
-        const id = document.getElementById('editProjId').value;
-        const n = document.getElementById('pName').value;
-        const s = document.getElementById('pStart').value;
-        const e = document.getElementById('pEnd').value;
-        const g = document.getElementById('pGroupCode').innerText;
+// 1. 建立群組後強制同步
+async function handleProjectSubmit() {
+    const id = document.getElementById('editProjId').value;
+    const n = document.getElementById('pName').value;
+    const s = document.getElementById('pStart').value;
+    const e = document.getElementById('pEnd').value;
+    const g = document.getElementById('pGroupCode').innerText;
 
-        if(!n || !s || !e) return;
-
-        if(id) { 
-            const p = projects.find(x => x.id == id); 
-            Object.assign(p, { name:n, start:s, end:e }); 
-        } else { 
-            projects.push({ id:Date.now(), name:n, start:s, end:e, groupId: g }); 
-        }
-
-        localStorage.setItem('trip_projects', JSON.stringify(projects)); 
-        closeModal('projectModal'); 
-        showFullProjectList(); // 跳轉到列表
-        loadProjectList(); 
-        initYearSelector();
-        syncCloud();
+    if(!n || !s || !e) {
+        alert("請填寫完整資訊");
+        return;
     }
 
+    let newId = id ? parseInt(id) : Date.now();
+    
+    if(id) { 
+        const p = projects.find(x => x.id == id); 
+        if(p) Object.assign(p, { name:n, start:s, end:e }); 
+    } else { 
+        projects.push({ id: newId, name:n, start:s, end:e, groupId: g }); 
+    }
+
+    // 更新本地儲存
+    localStorage.setItem('trip_projects', JSON.stringify(projects)); 
+    
+    // 重要：顯示進度並等待雲端寫入完成
+    document.getElementById('sync-status').innerText = "正在同步至雲端...";
+    const syncSuccess = await syncCloud(); 
+    
+    if(syncSuccess) {
+        alert("群組建立成功並已同步雲端！\n代碼為：" + g);
+        closeModal('projectModal'); 
+        showFullProjectList();
+        loadProjectList(); 
+        initYearSelector();
+    } else {
+        alert("本地儲存成功，但雲端同步失敗，請檢查網路。");
+    }
+}
     function selectProject(id) {
         currentProjectId = id; 
         const proj = projects.find(p => p.id === id); 
@@ -355,23 +383,33 @@
     }
 
     // --- 以下保持原本邏輯 (僅包裝為 saveAndRefresh 等) ---
-    async function syncCloud() {
-        const allData = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('trip_') || key.startsWith('records_') || key.startsWith('payers_') || key.startsWith('methods_') || key.startsWith('currencies_')) {
+   // 3. 確保 syncCloud 會回傳成功/失敗狀態
+async function syncCloud() {
+    const allData = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        // 只同步跟旅遊相關的資料
+        if (key.includes('trip_') || key.includes('records_') || key.includes('payers_') || key.includes('methods_') || key.includes('currencies_')) {
+            try {
                 allData[key] = JSON.parse(localStorage.getItem(key));
-            }
-        }
-        try {
-            document.getElementById('sync-status').innerText = "雲端同步中...";
-            await fetch(GAS_URL, { method: "POST", body: JSON.stringify(allData) });
-            document.getElementById('sync-status').innerText = "同步成功";
-        } catch (e) {
-            document.getElementById('sync-status').innerText = "同步失敗";
+            } catch(e) { continue; }
         }
     }
 
+    try {
+        const resp = await fetch(GAS_URL, {
+            method: "POST",
+            mode: 'no-cors', // 解決某些瀏覽器的跨域限制
+            body: JSON.stringify(allData)
+        });
+        document.getElementById('sync-status').innerText = "雲端同步成功";
+        return true;
+    } catch (e) {
+        console.error("Sync error:", e);
+        document.getElementById('sync-status').innerText = "同步失敗";
+        return false;
+    }
+}
     async function loadCloud() {
         try {
             const response = await fetch(GAS_URL);
