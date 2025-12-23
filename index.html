@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>LET'S GO TRAVEL 旅遊記帳系統</title>
+    <title>旅遊記帳系統 - 群組共用版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -60,9 +60,8 @@
 
 <div id="login-screen">
     <div class="login-box">
-        <h1 style="color: var(--primary); margin-bottom: 5px;">✈️ LET'S GO TRAVEL!</h1>
-        <h1 style="color: var(--primary); margin-bottom: 5px;">旅遊記帳系統</h1>
-        <p style="color: var(--gray); font-size: 14px;">請輸入群組代碼，進入您的專屬群組</p>
+        <h1 style="color: var(--primary); margin-bottom: 5px;">✈️ 旅遊記帳系統</h1>
+        <p style="color: var(--gray); font-size: 14px;">請輸入群組代碼進入共用空間</p>
         <input type="text" id="groupCodeInput" class="group-input" placeholder="XXXX" maxlength="8">
         <button class="btn-add-only" style="width: 100%; margin-bottom: 15px;" onclick="joinGroup()">進入群組</button>
         <div style="margin: 20px 0; display: flex; align-items: center; color: #ccc;">
@@ -70,7 +69,7 @@
             <span style="margin: 0 10px; font-size: 12px;">或者</span>
             <div style="flex:1; height:1px; background:#eee;"></div>
         </div>
-        <button class="btn-pill" style="width: 100%; padding: 12px; background: #f8f9fa; color: #666;" onclick="generateNewGroup()">🎲 初次使用，請點此產生隨機代碼，再進入群組</button>
+        <button class="btn-pill" style="width: 100%; padding: 12px; background: #f8f9fa; color: #666;" onclick="generateNewGroup()">🎲 產生隨機代碼</button>
     </div>
 </div>
 
@@ -142,7 +141,7 @@
             </div>
         </div>
     </div>
-    <div class="footer-signature">© 2025 LET'S GO TRAVEL! | Designed by Alex Hong</div>
+    <div class="footer-signature">© 2025 旅遊記帳系統 | Designed by Alex Hong</div>
 </div>
 
 <div id="importModal" class="modal"><div class="modal-content"><h3>📥 智慧匯入帳單</h3><p style="font-size: 11px; color: #999;">貼上 LINE 分享出的格式</p><textarea id="importInput" style="height:200px; font-family: monospace; font-size: 12px;" placeholder="貼上內容..."></textarea><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="parseImportText()">開始解析</button><button class="btn-add-only" onclick="closeModal('importModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
@@ -167,7 +166,7 @@
     function enterApp() {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-content').style.display = 'block';
-        document.getElementById('group-title').innerText = `🏠 您的群組代碼：${groupCode}`;
+        document.getElementById('group-title').innerText = `🏠 群組：${groupCode}`;
         loadCloud();
     }
 
@@ -188,7 +187,7 @@
     function shareGroupToLine() {
         const baseUrl = window.location.origin + window.location.pathname;
         const inviteUrl = `${baseUrl}?g=${groupCode}`;
-        const shareText = `✈️ 我正在使用 LET'S GO TRAVEL! 旅遊記帳系統，邀請你加入我的群組！\n\n群組代碼：${groupCode}\n直接點擊下方連結加入：\n${inviteUrl}`;
+        const shareText = `✈️ 我正在使用旅遊記帳系統，邀請你加入我的群組！\n\n群組代碼：${groupCode}\n直接點擊下方連結加入：\n${inviteUrl}`;
         window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
     }
 
@@ -249,16 +248,22 @@
     };
 
     // --- 智慧匯入 ---
-    function parseImportText() {
+        function parseImportText() {
         const text = document.getElementById('importInput').value;
         if (!text) return;
         const proj = projects.find(p => p.id === currentProjectId);
         let currentYear = proj && proj.start ? new Date(proj.start).getFullYear() : new Date().getFullYear();
-        let lastDate = ""; let importCount = 0; let lastMonth = -1;
+        let lastDate = ""; 
+        let importCount = 0; 
+        let lastMonth = -1;
+        
         const lines = text.split('\n').map(l => l.trim()).filter(l => l !== "");
+
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
-            const dateMatch = line.match(/^(\d{1,2})\/(\d{1,2})$/);
+
+            // 1. 處理日期 (相容 9/12, 9/12(五), 事前支出)
+            const dateMatch = line.match(/^(\d{1,2})\/(\d{1,2})/);
             if (dateMatch) {
                 const month = parseInt(dateMatch[1]);
                 const day = dateMatch[2].padStart(2, '0');
@@ -266,34 +271,86 @@
                 lastMonth = month;
                 lastDate = `${currentYear}-${month.toString().padStart(2, '0')}-${day}`;
                 continue;
+            } else if (line.includes("事前支出")) {
+                // 如果是事前支出，設定一個預設日期（旅程開始日或今天）
+                lastDate = proj && proj.start ? proj.start : new Date().toISOString().split('T')[0];
+                continue;
             }
+
+            // 2. 處理品項 [分類]
             const itemMatch = line.match(/^(.+?)\s*\[(.+?)\]$/);
-            if (itemMatch && lines[i+1] && lines[i+2]) {
-                const itemName = itemMatch[1].trim(), category = itemMatch[2].trim();
-                const amountLine = lines[++i], amountMatch = amountLine.match(/^([\d,]+)\s+([A-Z]{3})/);
-                const personLine = lines[++i], personMatch = personLine.match(/^(.+?)\s*\((.+?)\)$/);
-                if (amountMatch && personMatch && lastDate) {
-                    const rawAmt = parseFloat(amountMatch[1].replace(/,/g, '')), currCode = amountMatch[2];
-                    const person = personMatch[1].trim(), method = personMatch[2].trim().replace('💳 ', '').replace('💵 ', ''); 
-                    let rate = 1; const foundCurr = currencies.find(c => c.code === currCode);
+            if (itemMatch && lines[i+1]) {
+                const itemName = itemMatch[1].trim();
+                const category = itemMatch[2].trim();
+                
+                // 3. 處理金額 (相容 8,675 TWD 或 819 TWD (3,900 JPY))
+                const amountLine = lines[++i];
+                const amountMatch = amountLine.match(/^([\d,]+)\s+([A-Z]{3})/);
+                
+                if (amountMatch && lastDate) {
+                    const rawAmt = parseFloat(amountMatch[1].replace(/,/g, ''));
+                    const currCode = amountMatch[2];
+                    
+                    // 4. 處理支付者 (方式) - 尋找下一行是否有括號
+                    let person = "未指定";
+                    let method = "現金";
+                    
+                    if (lines[i+1]) {
+                        const nextLine = lines[i+1];
+                        // 檢查是否包含括號，且不是下一個品項(不含 [分類])
+                        if (nextLine.includes("(") || nextLine.includes(")")) {
+                            i++; // 指針移到這一行
+                            // 提取括號外與內的內容
+                            const personMatch = nextLine.match(/^([^(]*)\s*\((.*)\)$/);
+                            if (personMatch) {
+                                person = personMatch[1].trim() || "共同";
+                                method = personMatch[2].trim().replace('💳 ', '').replace('💵 ', '');
+                            } else {
+                                person = nextLine.trim();
+                            }
+                        }
+                    }
+
+                    // 匯入邏輯
+                    let rate = 1; 
+                    const foundCurr = currencies.find(c => c.code === currCode);
                     if (foundCurr) rate = foundCurr.rate;
-                    records.push({ id: Date.now() + Math.random(), date: lastDate, item: itemName, category: category, amount: rawAmt, currency: currCode, rate: rate, payer: person, method: method });
-                    if (!payers.includes(person)) payers.push(person);
+
+                    records.push({ 
+                        id: Date.now() + Math.random(), 
+                        date: lastDate, 
+                        item: itemName, 
+                        category: category, 
+                        amount: rawAmt, 
+                        currency: currCode, 
+                        rate: rate, 
+                        payer: person, 
+                        method: method 
+                    });
+
+                    if (person !== "未指定" && !payers.includes(person)) payers.push(person);
                     if (!payMethods.includes(method)) payMethods.push(method);
                     importCount++;
                 }
             }
         }
+
         if (importCount > 0) {
             alert(`成功匯入 ${importCount} 筆！`);
-            saveSettingsAndSync(); saveAndRefresh(); closeModal('importModal'); document.getElementById('importInput').value = '';
-        } else { alert("解析失敗，格式不符"); }
+            saveSettingsAndSync(); 
+            saveAndRefresh(); 
+            closeModal('importModal'); 
+            document.getElementById('importInput').value = '';
+        } else { 
+            alert("解析失敗，請確認格式是否符合「品項 [分類]」開頭"); 
+        }
     }
+
 
     async function handleAddRecord(shouldShare) {
         const amtInput = document.getElementById('amount'), itemInput = document.getElementById('itemName'), amt = parseFloat(amtInput.value);
         if(!amt) return;
-        showOverlay("⏳ 儲存中...");
+        showOverlay("⏳ 取得最新資料...");
         await loadCloud(true); 
         const newRec = { id: Date.now(), date: document.getElementById('date').value, item: itemInput.value || "未命名", category: document.getElementById('category').value, amount: amt, currency: document.getElementById('currency').value, rate: parseFloat(document.getElementById('rate').value) || 1, payer: document.getElementById('payerSelect').value, method: document.getElementById('payMethod').value };
         records.push(newRec);
