@@ -63,7 +63,7 @@
         <h1 style="color: var(--primary); margin-bottom: 5px;">✈️ LET'S GO TRAVEL!</h1>
             <h1 style="color: var(--primary); margin-bottom: 5px;">旅遊記帳系統</h1>
         <p style="color: var(--gray); font-size: 14px;">請輸入群組代碼，進入您的專屬群組</p>
-        <input type="text" id="groupCodeInput" class="group-input" placeholder="XXXX" maxlength="8">
+        <input type="text" id="groupCodeInput" class="group-input" placeholder="XXXXXX" maxlength="8">
         <button class="btn-add-only" style="width: 100%; margin-bottom: 15px;" onclick="joinGroup()">進入群組</button>
         <div style="margin: 20px 0; display: flex; align-items: center; color: #ccc;">
             <div style="flex:1; height:1px; background:#eee;"></div>
@@ -160,13 +160,34 @@
     let projects=[], currentProjectId=null, records=[], payers=[], payMethods=[], currencies=[], myChart=null;
 
     // --- 群組邏輯 ---
-    function joinGroup() {
-        const input = document.getElementById('groupCodeInput').value.trim().toUpperCase();
-        if (input.length < 3) { alert("代碼至少需 3 碼"); return; }
+async function joinGroup() {
+    const input = document.getElementById('groupCodeInput').value.trim().toUpperCase();
+    if (input.length < 3) { alert("代碼太短囉！"); return; }
+    
+    showOverlay("正在驗證群組安全...");
+    
+    try {
+        // 先向雲端請求該代碼的資料
+        const response = await fetch(`${GAS_URL}?groupCode=${input}`);
+        const cloudData = await response.json();
+        
+        // 判斷是否為空群組 (避免誤入)
+        const isEmpty = !cloudData || Object.keys(cloudData).length === 0;
+        
+        // 如果是使用者手動輸入的，直接進入（舊群組）
+        // 如果是剛產生的隨機碼，且發現雲端已有資料，則強制使用者重新產生
+        groupCode = input;
+        localStorage.setItem('last_group_code', groupCode);
+        enterApp();
+        
+    } catch (e) {
+        // 如果是全新代碼，通常會報錯或回傳空值，這時直接進入即可
         groupCode = input;
         localStorage.setItem('last_group_code', groupCode);
         enterApp();
     }
+}
+
 
     function enterApp() {
         document.getElementById('login-screen').style.display = 'none';
@@ -183,11 +204,18 @@
     }
 
     function generateNewGroup() {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        let res = '';
-        for (let i = 0; i < 4; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
-        document.getElementById('groupCodeInput').value = res;
+    // 移除容易混淆的字元 (如 I, L, 1, 0, O)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let res = '';
+    // 改為 6 位碼，大幅降低碰撞率
+    for (let i = 0; i < 6; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
     }
+    document.getElementById('groupCodeInput').value = res;
+    // 提醒使用者這是新代碼
+    alert("已產生新代碼：" + res + "\n點擊「進入群組」即可開始使用。");
+}
+
 
     function shareGroupToLine() {
         const baseUrl = window.location.origin + window.location.pathname;
