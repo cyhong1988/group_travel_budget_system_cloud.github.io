@@ -61,7 +61,7 @@
 <div id="login-screen">
     <div class="login-box">
         <h1 style="color: var(--primary); margin-bottom: 5px;">✈️ 旅遊記帳系統</h1>
-        <p style="color: var(--gray); font-size: 14px;">請輸入群組代碼進入共用空間</p>
+        <p style="color: var(--gray); font-size: 14px;">請輸入群組代碼進入您的專屬群組</p>
         <input type="text" id="groupCodeInput" class="group-input" placeholder="XXXX" maxlength="8">
         <button class="btn-add-only" style="width: 100%; margin-bottom: 15px;" onclick="joinGroup()">進入群組</button>
         <div style="margin: 20px 0; display: flex; align-items: center; color: #ccc;">
@@ -69,7 +69,7 @@
             <span style="margin: 0 10px; font-size: 12px;">或者</span>
             <div style="flex:1; height:1px; background:#eee;"></div>
         </div>
-        <button class="btn-pill" style="width: 100%; padding: 12px; background: #f8f9fa; color: #666;" onclick="generateNewGroup()">🎲 產生隨機代碼</button>
+        <button class="btn-pill" style="width: 100%; padding: 12px; background: #f8f9fa; color: #666;" onclick="generateNewGroup()">🎲 初次使用，請點此產生隨機代碼開啟新群組</button>
     </div>
 </div>
 
@@ -292,7 +292,7 @@
     async function handleAddRecord(shouldShare) {
         const amtInput = document.getElementById('amount'), itemInput = document.getElementById('itemName'), amt = parseFloat(amtInput.value);
         if(!amt) return;
-        showOverlay("⏳ 取得最新資料...");
+        showOverlay("⏳ 儲存中...");
         await loadCloud(true); 
         const newRec = { id: Date.now(), date: document.getElementById('date').value, item: itemInput.value || "未命名", category: document.getElementById('category').value, amount: amt, currency: document.getElementById('currency').value, rate: parseFloat(document.getElementById('rate').value) || 1, payer: document.getElementById('payerSelect').value, method: document.getElementById('payMethod').value };
         records.push(newRec);
