@@ -248,10 +248,11 @@
     };
 
     // --- 智慧匯入 ---
-        function parseImportText() {
+            function parseImportText() {
         const text = document.getElementById('importInput').value;
         if (!text) return;
         const proj = projects.find(p => p.id === currentProjectId);
+        // 設定基準年份，若無旅程日期則用今年
         let currentYear = proj && proj.start ? new Date(proj.start).getFullYear() : new Date().getFullYear();
         let lastDate = ""; 
         let importCount = 0; 
@@ -262,73 +263,83 @@
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
-            // 1. 處理日期 (相容 9/12, 9/12(五), 事前支出)
+            // 1. 處理日期標記 (相容 9/12, 9/12(五), 事前支出)
             const dateMatch = line.match(/^(\d{1,2})\/(\d{1,2})/);
             if (dateMatch) {
                 const month = parseInt(dateMatch[1]);
                 const day = dateMatch[2].padStart(2, '0');
+                // 跨年邏輯判斷
                 if (lastMonth !== -1 && month < lastMonth) { currentYear++; }
                 lastMonth = month;
                 lastDate = `${currentYear}-${month.toString().padStart(2, '0')}-${day}`;
                 continue;
             } else if (line.includes("事前支出")) {
-                // 如果是事前支出，設定一個預設日期（旅程開始日或今天）
+                // 事前支出預設為旅程開始日，若無則用今天
                 lastDate = proj && proj.start ? proj.start : new Date().toISOString().split('T')[0];
                 continue;
             }
 
-            // 2. 處理品項 [分類]
+            // 2. 識別品項行 (格式：品項 [分類])
             const itemMatch = line.match(/^(.+?)\s*\[(.+?)\]$/);
             if (itemMatch && lines[i+1]) {
                 const itemName = itemMatch[1].trim();
                 const category = itemMatch[2].trim();
                 
-                // 3. 處理金額 (相容 8,675 TWD 或 819 TWD (3,900 JPY))
+                // 3. 識別金額行 (支援 "819 TWD (3,900 JPY)" 或 "2,785 TWD")
                 const amountLine = lines[++i];
-                const amountMatch = amountLine.match(/^([\d,]+)\s+([A-Z]{3})/);
+                // 抓取第一組台幣，並選抓第二組括號內的外幣
+                const amountMatch = amountLine.match(/^([\d,]+)\s+TWD(?:\s*\(([\d,]+)\s+([A-Z]{3})\))?/);
                 
                 if (amountMatch && lastDate) {
-                    const rawAmt = parseFloat(amountMatch[1].replace(/,/g, ''));
-                    const currCode = amountMatch[2];
+                    const twdAmount = parseFloat(amountMatch[1].replace(/,/g, ''));
+                    const foreignAmount = amountMatch[2] ? parseFloat(amountMatch[2].replace(/,/g, '')) : null;
+                    const foreignCurr = amountMatch[3] || 'TWD';
                     
-                    // 4. 處理支付者 (方式) - 尋找下一行是否有括號
-                    let person = "未指定";
+                    // 計算匯率：如果有外幣則用 TWD/外幣，否則為 1
+                    let finalRate = 1;
+                    let finalAmount = twdAmount;
+                    let finalCurr = 'TWD';
+
+                    if (foreignAmount && foreignAmount > 0) {
+                        finalRate = twdAmount / foreignAmount;
+                        finalAmount = foreignAmount;
+                        finalCurr = foreignCurr;
+                    }
+
+                    // 4. 識別支付者與方式 (處理下一行)
+                    let person = "共同";
                     let method = "現金";
                     
                     if (lines[i+1]) {
                         const nextLine = lines[i+1];
-                        // 檢查是否包含括號，且不是下一個品項(不含 [分類])
+                        // 如果下一行包含括號，代表是支付資訊行
                         if (nextLine.includes("(") || nextLine.includes(")")) {
-                            i++; // 指針移到這一行
-                            // 提取括號外與內的內容
-                            const personMatch = nextLine.match(/^([^(]*)\s*\((.*)\)$/);
-                            if (personMatch) {
-                                person = personMatch[1].trim() || "共同";
-                                method = personMatch[2].trim().replace('💳 ', '').replace('💵 ', '');
+                            i++; // 跳過這行，因為已經處理了
+                            const personPart = nextLine.match(/^([^(]*)\s*\((.*)\)$/);
+                            if (personPart) {
+                                person = personPart[1].trim() || "共同";
+                                method = personPart[2].trim().replace('💳 ', '').replace('💵 ', '');
                             } else {
                                 person = nextLine.trim();
                             }
                         }
                     }
 
-                    // 匯入邏輯
-                    let rate = 1; 
-                    const foundCurr = currencies.find(c => c.code === currCode);
-                    if (foundCurr) rate = foundCurr.rate;
-
+                    // 寫入紀錄
                     records.push({ 
                         id: Date.now() + Math.random(), 
                         date: lastDate, 
                         item: itemName, 
                         category: category, 
-                        amount: rawAmt, 
-                        currency: currCode, 
-                        rate: rate, 
+                        amount: finalAmount, 
+                        currency: finalCurr, 
+                        rate: finalRate, 
                         payer: person, 
                         method: method 
                     });
 
-                    if (person !== "未指定" && !payers.includes(person)) payers.push(person);
+                    // 自動擴充選單清單
+                    if (person !== "共同" && !payers.includes(person)) payers.push(person);
                     if (!payMethods.includes(method)) payMethods.push(method);
                     importCount++;
                 }
@@ -336,15 +347,16 @@
         }
 
         if (importCount > 0) {
-            alert(`成功匯入 ${importCount} 筆！`);
+            alert(`✅ 成功解析並匯入 ${importCount} 筆帳目！`);
             saveSettingsAndSync(); 
             saveAndRefresh(); 
             closeModal('importModal'); 
             document.getElementById('importInput').value = '';
         } else { 
-            alert("解析失敗，請確認格式是否符合「品項 [分類]」開頭"); 
+            alert("❌ 解析失敗！請檢查格式是否包含「品項 [分類]」及「金額 TWD」。"); 
         }
     }
+
 
 
     async function handleAddRecord(shouldShare) {
