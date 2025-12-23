@@ -71,7 +71,6 @@
         </div>
         <button class="btn-pill" style="width: 100%; padding: 12px; background: #f8f9fa; color: #666;" onclick="generateNewGroup()">🎲 產生隨機代碼</button>
     </div>
-    <div style="position: absolute; bottom: 30px; font-size: 11px; color: #ccc;">提示：相同代碼的使用者將看到同一份資料</div>
 </div>
 
 <div id="sync-overlay">
@@ -83,7 +82,10 @@
     <div id="project-screen">
         <div style="text-align: center; margin: 10px 0 20px 0;">
             <h1 id="group-title" style="margin: 0; font-size: 20px; color: var(--primary);"></h1>
-            <div id="change-group-btn" onclick="location.reload()" style="font-size: 11px; color: var(--gray); text-decoration: underline; cursor:pointer; margin-top:5px;">切換群組</div>
+            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 8px;">
+                <div onclick="shareGroupToLine()" style="display:inline-block; font-size: 11px; color: white; cursor:pointer; background:var(--line); padding:6px 14px; border-radius:20px; font-weight:bold;">🟢 邀請好友加入</div>
+                <div onclick="logoutGroup()" style="display:inline-block; font-size: 11px; color: var(--gray); text-decoration: underline; cursor:pointer; background:#eee; padding:6px 14px; border-radius:20px;">🏠 切換群組</div>
+            </div>
         </div>
         
         <div class="card" style="text-align:center; background:linear-gradient(135deg, #f0f7ff 0%, #e6f1ff 100%); border:none;">
@@ -152,19 +154,27 @@
     let groupCode = ""; 
     let projects=[], currentProjectId=null, records=[], payers=[], payMethods=[], currencies=[], myChart=null;
 
-    // --- 首頁群組邏輯 ---
+    // --- 群組邏輯 ---
     function joinGroup() {
         const input = document.getElementById('groupCodeInput').value.trim().toUpperCase();
         if (input.length < 3) { alert("代碼至少需 3 碼"); return; }
         groupCode = input;
         localStorage.setItem('last_group_code', groupCode);
-        document.getElementById('login-screen').style.opacity = '0';
-        setTimeout(() => {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-content').style.display = 'block';
-            document.getElementById('group-title').innerText = `🏠 群組：${groupCode}`;
-            loadCloud();
-        }, 500);
+        enterApp();
+    }
+
+    function enterApp() {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-content').style.display = 'block';
+        document.getElementById('group-title').innerText = `🏠 群組：${groupCode}`;
+        loadCloud();
+    }
+
+    function logoutGroup() {
+        if(confirm("確定要退出目前群組並返回首頁嗎？")) {
+            localStorage.removeItem('last_group_code');
+            location.reload();
+        }
     }
 
     function generateNewGroup() {
@@ -174,7 +184,14 @@
         document.getElementById('groupCodeInput').value = res;
     }
 
-    // --- 核心同步功能 (加入 groupCode 隔離) ---
+    function shareGroupToLine() {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const inviteUrl = `${baseUrl}?g=${groupCode}`;
+        const shareText = `✈️ 我正在使用旅遊記帳系統，邀請你加入我的群組！\n\n群組代碼：${groupCode}\n直接點擊下方連結加入：\n${inviteUrl}`;
+        window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
+    }
+
+    // --- 同步與載入 ---
     function showOverlay(msg) { document.getElementById('sync-overlay').style.display = 'flex'; document.getElementById('sync-status-text').innerText = msg; }
     function hideOverlay() { setTimeout(() => { document.getElementById('sync-overlay').style.display = 'none'; }, 800); }
 
@@ -192,35 +209,45 @@
     }
 
     async function loadCloud(isQuiet = false) {
-        if(!isQuiet) showOverlay(`☁️ 正在取得群組 [${groupCode}] 資料...`);
+        if(!isQuiet) showOverlay(`☁️ 正在同步 [${groupCode}]...`);
         try {
             const response = await fetch(`${GAS_URL}?groupCode=${groupCode}`);
             const cloudData = await response.json();
-            // 清理本地舊資料並寫入新群組資料
+            const lastCode = localStorage.getItem('last_group_code');
             localStorage.clear();
-            localStorage.setItem('last_group_code', groupCode);
+            localStorage.setItem('last_group_code', lastCode);
+
             if (cloudData && typeof cloudData === 'object' && Object.keys(cloudData).length > 0) {
                 Object.keys(cloudData).forEach(key => localStorage.setItem(key, JSON.stringify(cloudData[key])));
                 projects = JSON.parse(localStorage.getItem('trip_projects')) || [];
                 if (currentProjectId) records = JSON.parse(localStorage.getItem(`records_${currentProjectId}`)) || [];
-                if(!isQuiet) document.getElementById('sync-status-text').innerText = "✅ 同步完成！";
+                if(!isQuiet) document.getElementById('sync-status-text').innerText = "✅ 同步完成";
             }
             if(!isQuiet) hideOverlay();
             loadProjectList(); initYearSelector();
-            return true;
         } catch (e) {
-            if(!isQuiet) { document.getElementById('sync-status-text').innerText = "🆕 新群組建立成功"; setTimeout(hideOverlay, 1500); }
-            return false;
+            if(!isQuiet) { document.getElementById('sync-status-text').innerText = "🆕 新群組初始化"; setTimeout(hideOverlay, 1500); }
         }
     }
 
     window.onload = function() {
-        const saved = localStorage.getItem('last_group_code');
-        if(saved) document.getElementById('groupCodeInput').value = saved;
         Chart.register(ChartDataLabels);
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteCode = urlParams.get('g');
+        const saved = localStorage.getItem('last_group_code');
+
+        if (inviteCode) {
+            groupCode = inviteCode.toUpperCase();
+            localStorage.setItem('last_group_code', groupCode);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            enterApp();
+        } else if (saved) {
+            groupCode = saved;
+            enterApp();
+        }
     };
 
-    // --- 智慧匯入 (您要求的優化版) ---
+    // --- 智慧匯入 ---
     function parseImportText() {
         const text = document.getElementById('importInput').value;
         if (!text) return;
@@ -259,10 +286,9 @@
         if (importCount > 0) {
             alert(`成功匯入 ${importCount} 筆！`);
             saveSettingsAndSync(); saveAndRefresh(); closeModal('importModal'); document.getElementById('importInput').value = '';
-        } else { alert("解析失敗"); }
+        } else { alert("解析失敗，格式不符"); }
     }
 
-    // --- 新增品項 (安全同步版) ---
     async function handleAddRecord(shouldShare) {
         const amtInput = document.getElementById('amount'), itemInput = document.getElementById('itemName'), amt = parseFloat(amtInput.value);
         if(!amt) return;
@@ -277,14 +303,7 @@
         if(shouldShare) { const txt = generateFullText(); window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(txt)}`; }
     }
 
-    // ... 其他輔助函式 (loadProjectList, selectProject, render, syncUI 等) 保持原本邏輯 ...
-    async function handleProjectSubmit() {
-        const id = document.getElementById('editProjId').value, n = document.getElementById('pName').value, s = document.getElementById('pStart').value, e = document.getElementById('pEnd').value;
-        if(!n || !s || !e) return;
-        if(id) { const p = projects.find(x => x.id == id); Object.assign(p, { name:n, start:s, end:e }); }
-        else { projects.push({ id:Date.now(), name:n, start:s, end:e }); }
-        localStorage.setItem('trip_projects', JSON.stringify(projects)); closeModal('projectModal'); loadProjectList(); initYearSelector(); await syncCloud();
-    }
+    // --- 其他核心功能 ---
     function loadProjectList() {
         const list = document.getElementById('project-list');
         list.innerHTML = projects.length ? '' : '<p style="text-align:center;color:#999;margin-top:20px;">尚未建立旅程</p>';
@@ -337,6 +356,13 @@
         projects.forEach(p => { if(p.start) yrs.add(new Date(p.start).getFullYear()); });
         sel.innerHTML = Array.from(yrs).sort((a,b)=>b-a).map(y => `<option value="${y}">${y} 年</option>`).join('');
         updateYearlyTotal();
+    }
+    async function handleProjectSubmit() {
+        const id = document.getElementById('editProjId').value, n = document.getElementById('pName').value, s = document.getElementById('pStart').value, e = document.getElementById('pEnd').value;
+        if(!n || !s || !e) return;
+        if(id) { const p = projects.find(x => x.id == id); Object.assign(p, { name:n, start:s, end:e }); }
+        else { projects.push({ id:Date.now(), name:n, start:s, end:e }); }
+        localStorage.setItem('trip_projects', JSON.stringify(projects)); closeModal('projectModal'); loadProjectList(); initYearSelector(); await syncCloud();
     }
     function backToProjectList() { document.getElementById('main-screen').style.display='none'; document.getElementById('project-screen').style.display='block'; loadProjectList(); initYearSelector(); }
     function openModal(id) { document.getElementById(id).style.display='block'; }
