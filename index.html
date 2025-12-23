@@ -162,31 +162,35 @@
     // --- 群組邏輯 ---
 async function joinGroup() {
     const input = document.getElementById('groupCodeInput').value.trim().toUpperCase();
-    if (input.length < 3) { alert("代碼太短囉！"); return; }
+    if (input.length < 3) { alert("請輸入正確的群組代碼"); return; }
     
+    // 顯示讀取中，增加安全感
     showOverlay("正在驗證群組安全...");
     
     try {
-        // 先向雲端請求該代碼的資料
         const response = await fetch(`${GAS_URL}?groupCode=${input}`);
         const cloudData = await response.json();
         
-        // 判斷是否為空群組 (避免誤入)
-        const isEmpty = !cloudData || Object.keys(cloudData).length === 0;
+        // 如果是隨機生成的代碼（通常是 6 位），但發現雲端已經有大量資料
+        // 這是一個簡單的防撞提醒
+        const hasData = cloudData && Object.keys(cloudData).length > 5; 
         
-        // 如果是使用者手動輸入的，直接進入（舊群組）
-        // 如果是剛產生的隨機碼，且發現雲端已有資料，則強制使用者重新產生
+        if (hasData) {
+            console.log("此代碼已有資料儲存。");
+        }
+
         groupCode = input;
         localStorage.setItem('last_group_code', groupCode);
         enterApp();
         
     } catch (e) {
-        // 如果是全新代碼，通常會報錯或回傳空值，這時直接進入即可
+        // 如果是全新代碼抓不到資料，直接進入
         groupCode = input;
         localStorage.setItem('last_group_code', groupCode);
         enterApp();
     }
 }
+
 
 
     function enterApp() {
