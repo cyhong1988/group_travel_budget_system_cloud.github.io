@@ -421,12 +421,26 @@
         projects.forEach(p => { if(p.start && new Date(p.start).getFullYear() === y) { const s = JSON.parse(localStorage.getItem(`records_${p.id}`)) || []; t += s.reduce((sum, r) => sum + Math.round(r.amount * (r.rate||1)), 0); } });
         document.getElementById('yearlyTotalDisplay').innerText = `NT$ ${t.toLocaleString()}`;
     }
-    function initYearSelector() {
-        const sel = document.getElementById('yearSelect'), yrs = new Set([new Date().getFullYear()]);
-        projects.forEach(p => { if(p.start) yrs.add(new Date(p.start).getFullYear()); });
+        function initYearSelector() {
+        const sel = document.getElementById('yearSelect');
+        const currentYear = new Date().getFullYear(); // 取得今年年份
+        const yrs = new Set([currentYear]); // 確保今年一定在選項中
+        
+        // 將所有旅程的年份也加入選項
+        projects.forEach(p => { 
+            if(p.start) yrs.add(new Date(p.start).getFullYear()); 
+        });
+        
+        // 排序年份（由大到小），並生成選單
         sel.innerHTML = Array.from(yrs).sort((a,b)=>b-a).map(y => `<option value="${y}">${y} 年</option>`).join('');
+        
+        // --- 重點修改：將預設值設定為今年 ---
+        sel.value = currentYear;
+        
+        // 執行更新顯示金額
         updateYearlyTotal();
     }
+
     async function handleProjectSubmit() {
         const id = document.getElementById('editProjId').value, n = document.getElementById('pName').value, s = document.getElementById('pStart').value, e = document.getElementById('pEnd').value;
         if(!n || !s || !e) return;
