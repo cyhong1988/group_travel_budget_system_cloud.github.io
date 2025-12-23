@@ -148,7 +148,7 @@
 <div id="editModal" class="modal"><div class="modal-content"><h3>✏️ 編輯明細</h3><input type="hidden" id="editId"><div style="text-align:left; margin-bottom:15px;"><label>品項名稱</label><input type="text" id="eItem"></div><div class="form-grid"><div><label>日期</label><input type="date" id="eDate"></div><div><label>分類</label><select id="eCategory"><option value="飲食">🍕 飲食</option><option value="購物">🛍️ 購物</option><option value="交通">🚗 交通</option><option value="住宿">🏨 住宿</option><option value="娛樂">🎟️ 娛樂</option><option value="其他">📦 其他</option></select></div><div><label>金額</label><input type="number" id="eAmount"></div><div><label>幣別</label><select id="eCurrency" onchange="applyCurrencyRate('eRate', 'eCurrency')"></select></div><div><label>匯率</label><input type="number" id="eRate" step="0.0001"></div><div><label>方式</label><select id="ePayMethod"></select></div><div style="grid-column: span 2;"><label>支付者</label><select id="ePayer"></select></div></div><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="saveEdit()">儲存</button><button class="btn-add-only" onclick="closeModal('editModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
 
 <script>
-    const GAS_URL = "您的GAS網址"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzALDNW2aM0RWlRqiUK66LYNwc_E6v38daob0O6GWi7p8pSy8HjqYnP9md2Q9GVh_zykg/exec"; 
     let groupCode = ""; 
     let projects=[], currentProjectId=null, records=[], payers=[], payMethods=[], currencies=[], myChart=null;
 
