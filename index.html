@@ -363,7 +363,7 @@
     async function handleAddRecord(shouldShare) {
         const amtInput = document.getElementById('amount'), itemInput = document.getElementById('itemName'), amt = parseFloat(amtInput.value);
         if(!amt) return;
-        showOverlay("⏳ 取得最新資料...");
+        showOverlay("⏳ 儲存中...");
         await loadCloud(true); 
         const newRec = { id: Date.now(), date: document.getElementById('date').value, item: itemInput.value || "未命名", category: document.getElementById('category').value, amount: amt, currency: document.getElementById('currency').value, rate: parseFloat(document.getElementById('rate').value) || 1, payer: document.getElementById('payerSelect').value, method: document.getElementById('payMethod').value };
         records.push(newRec);
