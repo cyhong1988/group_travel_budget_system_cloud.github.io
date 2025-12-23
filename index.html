@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>旅遊記帳系統 - 群組共用版</title>
+    <title>LET'S GO TRAVEL 旅遊記帳系統</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -60,7 +60,7 @@
 
 <div id="login-screen">
     <div class="login-box">
-        <h1 style="color: var(--primary); margin-bottom: 5px;">✈️ 旅遊記帳系統</h1>
+        <h1 style="color: var(--primary); margin-bottom: 5px;">✈️ LET'S GO TRAVEL! 旅遊記帳系統</h1>
         <p style="color: var(--gray); font-size: 14px;">請輸入群組代碼，進入您的專屬群組</p>
         <input type="text" id="groupCodeInput" class="group-input" placeholder="XXXX" maxlength="8">
         <button class="btn-add-only" style="width: 100%; margin-bottom: 15px;" onclick="joinGroup()">進入群組</button>
@@ -141,7 +141,7 @@
             </div>
         </div>
     </div>
-    <div class="footer-signature">© 2025 旅遊記帳系統 | Designed by Alex Hong</div>
+    <div class="footer-signature">© 2025 LET'S GO TRAVEL! | Designed by Alex Hong</div>
 </div>
 
 <div id="importModal" class="modal"><div class="modal-content"><h3>📥 智慧匯入帳單</h3><p style="font-size: 11px; color: #999;">貼上 LINE 分享出的格式</p><textarea id="importInput" style="height:200px; font-family: monospace; font-size: 12px;" placeholder="貼上內容..."></textarea><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="parseImportText()">開始解析</button><button class="btn-add-only" onclick="closeModal('importModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
@@ -187,7 +187,7 @@
     function shareGroupToLine() {
         const baseUrl = window.location.origin + window.location.pathname;
         const inviteUrl = `${baseUrl}?g=${groupCode}`;
-        const shareText = `✈️ 我正在使用旅遊記帳系統，邀請你加入我的群組！\n\n群組代碼：${groupCode}\n直接點擊下方連結加入：\n${inviteUrl}`;
+        const shareText = `✈️ 我正在使用 LET'S GO TRAVEL! 旅遊記帳系統，邀請你加入我的群組！\n\n群組代碼：${groupCode}\n直接點擊下方連結加入：\n${inviteUrl}`;
         window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
     }
 
