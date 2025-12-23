@@ -375,7 +375,39 @@
     function openNewProjectModal() { document.getElementById('pModalTitle').innerText="新旅程"; document.getElementById('editProjId').value=""; document.getElementById('pName').value=""; document.getElementById('pStart').value=""; document.getElementById('pEnd').value=""; openModal('projectModal'); }
     function openEditProject(id) { const p = projects.find(x => x.id === id); if(!p) return; document.getElementById('pModalTitle').innerText="修改旅程"; document.getElementById('editProjId').value=p.id; document.getElementById('pName').value=p.name; document.getElementById('pStart').value=p.start; document.getElementById('pEnd').value=p.end; openModal('projectModal'); }
     async function deleteProject(id) { if(!confirm('刪除旅程？')) return; projects = projects.filter(p => p.id !== id); localStorage.setItem('trip_projects', JSON.stringify(projects)); loadProjectList(); initYearSelector(); await syncCloud(); }
-    function openEdit(id) { const r = records.find(x => x.id == id); if (!r) return; document.getElementById('editId').value = r.id; document.getElementById('eItem').value = r.item; document.getElementById('eDate').value = r.date; document.getElementById('eCategory').value = r.category; document.getElementById('eAmount').value = r.amount; document.getElementById('eCurrency').value = r.currency || 'TWD'; document.getElementById('eRate').value = r.rate || 1; document.getElementById('ePayMethod').value = r.method; document.getElementById('ePayer').value = r.payer; openModal('editModal'); }
+    function openEdit(id) {
+    const r = records.find(x => x.id == id);
+    if (!r) return;
+
+    // 1. 設定隱藏的 ID 欄位
+    document.getElementById('editId').value = r.id;
+
+    // 2. 填充基本文字與日期欄位
+    document.getElementById('eItem').value = r.item;
+    document.getElementById('eDate').value = r.date;
+    document.getElementById('eCategory').value = r.category;
+    document.getElementById('eAmount').value = r.amount;
+    document.getElementById('eRate').value = r.rate || 1;
+
+    // 3. 重點：動態生成並填充「幣別」下拉選單
+    const eCurrency = document.getElementById('eCurrency');
+    eCurrency.innerHTML = currencies.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+    eCurrency.value = r.currency || 'TWD';
+
+    // 4. 重點：動態生成並填充「支付方式」下拉選單
+    const ePayMethod = document.getElementById('ePayMethod');
+    ePayMethod.innerHTML = payMethods.map(m => `<option value="${m}">${m}</option>`).join('');
+    ePayMethod.value = r.method;
+
+    // 5. 重點：動態生成並填充「支付者」下拉選單
+    const ePayer = document.getElementById('ePayer');
+    ePayer.innerHTML = payers.map(p => `<option value="${p}">${p}</option>`).join('');
+    ePayer.value = r.payer;
+
+    // 6. 顯示彈窗
+    openModal('editModal');
+}
+
     function saveEdit() { const id = document.getElementById('editId').value, r = records.find(x => x.id == id); if (r) { Object.assign(r, { item: document.getElementById('eItem').value, date: document.getElementById('eDate').value, category: document.getElementById('eCategory').value, amount: parseFloat(document.getElementById('eAmount').value), currency: document.getElementById('eCurrency').value, rate: parseFloat(document.getElementById('eRate').value) || 1, method: document.getElementById('ePayMethod').value, payer: document.getElementById('ePayer').value }); saveAndRefresh(); } closeModal('editModal'); }
     function deleteRecord(id) { if(!confirm('刪除紀錄？')) return; records = records.filter(r => r.id !== id); saveAndRefresh(); }
     function manageAdd(type, inputId) { const val = document.getElementById(inputId).value.trim(); if(!val) return; if(type==='payers') payers.push(val); else if(type==='methods') payMethods.push(val); document.getElementById(inputId).value = ''; saveSettingsAndSync(); }
