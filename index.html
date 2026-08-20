@@ -51,7 +51,7 @@
         .drag-handle { cursor: grab; padding: 10px 20px; color: #ccc; font-size: 24px; position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: center; z-index: 10; touch-action: none; }
         .project-actions { position: absolute; left: 15px; bottom: 12px; display: flex; gap: 8px; }
         h2 { margin: 0 0 15px 0; font-size: 1.2rem; border-left: 5px solid var(--primary); padding-left: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-pill { background: var(--btn-bg); color: #4a90e2; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
+        .btn-pill { background: var(--btn-bg); color: #4a90e2; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: 600; margin: 0 2px; }
         .btn-pill.del { color: var(--danger); background: #fff1f0; }
         .btn-add-only { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1; }
         .btn-line-direct { background: var(--line); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1.2; display: flex; align-items: center; justify-content: center; gap: 5px; }
@@ -223,7 +223,6 @@
     function showOverlay(msg) { document.getElementById('sync-overlay').style.display = 'flex'; document.getElementById('sync-status-text').innerText = msg; }
     function hideOverlay() { setTimeout(() => { document.getElementById('sync-overlay').style.display = 'none'; }, 800); }
 
-    // --- 新增：狀態列顯示邏輯 ---
     function showTopStatus(msg, type = 'saving') {
         const bar = document.getElementById('top-status-bar');
         bar.innerText = msg;
@@ -289,7 +288,6 @@
         const amtInput = document.getElementById('amount'), itemInput = document.getElementById('itemName'), amt = parseFloat(amtInput.value);
         if(!amt) return;
 
-        // 改用狀態列顯示，不擋住螢幕
         showTopStatus("⏳ 儲存中...", "saving");
 
         await loadCloud(true); 
@@ -310,8 +308,6 @@
         await syncCloud();
 
         amtInput.value = ''; itemInput.value = '';
-        
-        // 顯示成功狀態
         showTopStatus("✅ 儲存成功", "success");
 
         if(shouldShare) { const txt = generateFullText(); window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(txt)}`; }
@@ -406,7 +402,9 @@
             const twd = Math.round(r.amount * r.rate); total += twd; stats[r.category] = (stats[r.category] || 0) + twd;
             let tagsHtml = `<span class="tag">${r.payer}</span><span class="tag">${r.category}</span><span class="tag">${r.method}</span>`;
             if (r.currency && r.currency !== 'TWD') tagsHtml += `<span class="tag" style="background:#e3f2fd; color:#1976d2;">${r.amount.toLocaleString()} ${r.currency}</span>`;
-            tbody.innerHTML += `<tr><td>${r.date.substring(5).replace('-', '/')}</td><td><b>${r.item}</b><br>${tagsHtml}</td><td style="color:var(--danger);font-weight:bold;">$${twd.toLocaleString()}</td><td style="text-align:right;"><button class="btn-pill" onclick="openEdit(${r.id})">✏️</button><button class="btn-pill del" onclick="deleteRecord(${r.id})">🗑️</button></td></tr>`;
+            
+            // 加入複製按鈕 copyRecord(${r.id})
+            tbody.innerHTML += `<tr><td>${r.date.substring(5).replace('-', '/')}</td><td><b>${r.item}</b><br>${tagsHtml}</td><td style="color:var(--danger);font-weight:bold;">$${twd.toLocaleString()}</td><td style="text-align:right;"><button class="btn-pill" onclick="copyRecord(${r.id})">📋</button><button class="btn-pill" onclick="openEdit(${r.id})">✏️</button><button class="btn-pill del" onclick="deleteRecord(${r.id})">🗑️</button></td></tr>`;
         });
         document.getElementById('totalDisplay').innerText = `NT$ ${total.toLocaleString()}`; updateChart(stats);
     }
@@ -478,6 +476,17 @@
 
     function saveEdit() { const id = document.getElementById('editId').value, r = records.find(x => x.id == id); if (r) { Object.assign(r, { item: document.getElementById('eItem').value, date: document.getElementById('eDate').value, category: document.getElementById('eCategory').value, amount: parseFloat(document.getElementById('eAmount').value), currency: document.getElementById('eCurrency').value, rate: parseFloat(document.getElementById('eRate').value) || 1, method: document.getElementById('ePayMethod').value, payer: document.getElementById('ePayer').value }); saveAndRefresh(); } closeModal('editModal'); }
     function deleteRecord(id) { if(!confirm('刪除紀錄？')) return; records = records.filter(r => r.id !== id); saveAndRefresh(); }
+    
+    // 新增複製功能邏輯
+    function copyRecord(id) {
+        const r = records.find(x => x.id == id);
+        if (!r) return;
+        const newRecord = { ...r, id: Date.now() + Math.random() };
+        records.push(newRecord);
+        saveAndRefresh();
+        showTopStatus("✅ 複製成功", "success");
+    }
+
     function manageAdd(type, inputId) { const val = document.getElementById(inputId).value.trim(); if(!val) return; if(type==='payers') payers.push(val); else if(type==='methods') payMethods.push(val); document.getElementById(inputId).value = ''; saveSettingsAndSync(); }
     function manageAddCurrency() { const c = document.getElementById('mCurr').value.trim().toUpperCase(), r = parseFloat(document.getElementById('mRate').value); if(!c || !r) return; currencies.push({code:c, rate:r}); document.getElementById('mCurr').value=''; document.getElementById('mRate').value=''; saveSettingsAndSync(); }
     function manageDelete(type, index) { if(!confirm('刪除？')) return; if(type==='payers') payers.splice(index, 1); else if(type==='methods') payMethods.splice(index, 1); else if(type==='currencies') currencies.splice(index, 1); saveSettingsAndSync(); }
