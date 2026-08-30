@@ -403,7 +403,7 @@
 
     function selectProject(id) {
         currentProjectId = id;
-        localStorage.setItem(`last_project_id_${groupCode}`, id); // 新增：記住最後點擊的旅程
+        localStorage.setItem(`last_project_id_${groupCode}`, id); // 記住最後點擊的旅程
         const proj = projects.find(p => p.id === id); if(!proj) return;
         document.getElementById('current-project-name').innerText = proj.name;
         records = JSON.parse(localStorage.getItem(`records_${id}`)) || [];
@@ -431,10 +431,20 @@
     function syncUI() {
         document.getElementById('payerSelect').innerHTML = payers.map(p => `<option value="${p}">${p}</option>`).join('');
         document.getElementById('payMethod').innerHTML = payMethods.map(m => `<option value="${m}">${m}</option>`).join('');
-        document.getElementById('currency').innerHTML = currencies.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+        
+        // 渲染並還原最後一次使用的幣別
+        const cSelect = document.getElementById('currency');
+        cSelect.innerHTML = currencies.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
+        
+        const lastCurr = localStorage.getItem(`last_curr_${currentProjectId}`);
+        if (lastCurr && currencies.find(c => c.code === lastCurr)) {
+            cSelect.value = lastCurr;
+        }
+        
         document.getElementById('listPayer').innerHTML = payers.map((p, i) => `<div class="mgmt-chip"><span>${p}</span><span style="margin-left:auto;color:red;cursor:pointer;" onclick="manageDelete('payers',${i})">🗑️</span></div>`).join('');
         document.getElementById('listMethod').innerHTML = payMethods.map((m, i) => `<div class="mgmt-chip"><span>${m}</span><span style="margin-left:auto;color:red;cursor:pointer;" onclick="manageDelete('methods',${i})">🗑️</span></div>`).join('');
         document.getElementById('listCurr').innerHTML = currencies.map((c, i) => `<div class="mgmt-chip"><span>${c.code}: ${c.rate}</span><span style="margin-left:auto;color:red;cursor:pointer;" onclick="manageDelete('currencies',${i})">🗑️</span></div>`).join('');
+        
         applyCurrencyRate('rate', 'currency', true);
     }
 
@@ -471,7 +481,7 @@
     }
 
     function backToProjectList() { 
-        localStorage.removeItem(`last_project_id_${groupCode}`); // 新增：返回清單時清除記憶，這樣下次重整就不會強制進專案
+        localStorage.removeItem(`last_project_id_${groupCode}`); // 返回清單時清除記憶，這樣下次重整就不會強制進專案
         document.getElementById('main-screen').style.display='none'; 
         document.getElementById('project-screen').style.display='block'; 
         loadProjectList(); 
@@ -487,6 +497,12 @@
         const cElement = document.getElementById(cId);
         if (!cElement) return;
         const c = cElement.value;
+        
+        // 新增：只要切換主欄位的幣別，就會儲存為最後一次選擇的幣別
+        if (cId === 'currency' && currentProjectId) {
+            localStorage.setItem(`last_curr_${currentProjectId}`, c);
+        }
+
         const t = currencies.find(x => x.code === c); 
         const rateInput = document.getElementById(rId);
         if(!rateInput) return;
