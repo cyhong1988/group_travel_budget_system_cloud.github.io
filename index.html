@@ -134,7 +134,7 @@
                 <div><label>金額</label><input type="number" id="amount" placeholder="0"></div>
                 <div><label>幣別</label><select id="currency" onchange="applyCurrencyRate('rate', 'currency')"></select></div>
                 <div><label>匯率</label><input type="number" id="rate" step="0.0001"></div>
-                <div><label>方式</label><select id="payMethod"></select></div>
+                <div><label>方式</label><select id="payMethod" onchange="saveLastMethod()"></select></div>
             </div>
             <div style="display:flex; gap:10px;">
                 <button class="btn-add-only" onclick="handleAddRecord(false)">僅新增</button>
@@ -250,9 +250,22 @@
         try {
             const response = await fetch(`${GAS_URL}?groupCode=${groupCode}`);
             const cloudData = await response.json();
-            const lastCode = localStorage.getItem('last_group_code');
+
+            // 🔥 關鍵修正：同步前，先備份所有的 UI 記憶狀態 (包含群組代碼、最後選擇的旅程、最後選擇的幣別與付款方式)
+            const preservedSettings = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k.startsWith('last_')) {
+                    preservedSettings[k] = localStorage.getItem(k);
+                }
+            }
+
             localStorage.clear();
-            localStorage.setItem('last_group_code', lastCode);
+
+            // 🔥 還原備份的 UI 記憶狀態
+            Object.keys(preservedSettings).forEach(k => {
+                localStorage.setItem(k, preservedSettings[k]);
+            });
 
             if (cloudData && typeof cloudData === 'object' && Object.keys(cloudData).length > 0) {
                 Object.keys(cloudData).forEach(key => localStorage.setItem(key, JSON.stringify(cloudData[key])));
@@ -272,7 +285,7 @@
             if(!isQuiet) hideOverlay();
             loadProjectList(); initYearSelector();
 
-            // 新增：自動進入上次記錄的旅程
+            // 自動進入上次記錄的旅程
             if (!isQuiet) {
                 const lastProjId = localStorage.getItem(`last_project_id_${groupCode}`);
                 if (lastProjId && projects.find(p => p.id === parseInt(lastProjId))) {
@@ -290,21 +303,34 @@
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('g');
         const saved = localStorage.getItem('last_group_code');
+        
+        // 確保儲存的群組代碼是有效的，如果有效直接登入
         if (inviteCode) {
             groupCode = inviteCode.toUpperCase();
             localStorage.setItem('last_group_code', groupCode);
             window.history.replaceState({}, document.title, window.location.pathname);
             enterApp();
-        } else if (saved) {
+        } else if (saved && saved !== 'null') {
             groupCode = saved;
             enterApp();
         }
     };
 
+    // 保存最後使用的付款方式
+    function saveLastMethod() {
+        if (currentProjectId) {
+            localStorage.setItem(`last_method_${currentProjectId}`, document.getElementById('payMethod').value);
+        }
+    }
+
     // --- 核心新增功能：Handle Record ---
     async function handleAddRecord(shouldShare) {
         const amtInput = document.getElementById('amount'), itemInput = document.getElementById('itemName'), amt = parseFloat(amtInput.value);
         if(!amt) return;
+
+        // 在新增記帳時，確保強制記錄當下選擇的幣別和付款方式
+        localStorage.setItem(`last_curr_${currentProjectId}`, document.getElementById('currency').value);
+        localStorage.setItem(`last_method_${currentProjectId}`, document.getElementById('payMethod').value);
 
         showTopStatus("⏳ 儲存中...", "saving");
 
@@ -430,12 +456,18 @@
 
     function syncUI() {
         document.getElementById('payerSelect').innerHTML = payers.map(p => `<option value="${p}">${p}</option>`).join('');
-        document.getElementById('payMethod').innerHTML = payMethods.map(m => `<option value="${m}">${m}</option>`).join('');
         
+        // 渲染並還原最後一次使用的付款方式
+        const mSelect = document.getElementById('payMethod');
+        mSelect.innerHTML = payMethods.map(m => `<option value="${m}">${m}</option>`).join('');
+        const lastMethod = localStorage.getItem(`last_method_${currentProjectId}`);
+        if (lastMethod && payMethods.includes(lastMethod)) {
+            mSelect.value = lastMethod;
+        }
+
         // 渲染並還原最後一次使用的幣別
         const cSelect = document.getElementById('currency');
         cSelect.innerHTML = currencies.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
-        
         const lastCurr = localStorage.getItem(`last_curr_${currentProjectId}`);
         if (lastCurr && currencies.find(c => c.code === lastCurr)) {
             cSelect.value = lastCurr;
@@ -492,13 +524,13 @@
     function saveAndRefresh() { localStorage.setItem(`records_${currentProjectId}`, JSON.stringify(records)); render(); syncCloud(); }
     async function saveSettingsAndSync() { localStorage.setItem(`payers_${currentProjectId}`, JSON.stringify(payers)); localStorage.setItem(`methods_${currentProjectId}`, JSON.stringify(payMethods)); localStorage.setItem(`currencies_${currentProjectId}`, JSON.stringify(currencies)); syncUI(); await syncCloud(); }
     
-    // === 自動抓取匯率邏輯更新區塊 ===
+    // === 自動抓取匯率邏輯 ===
     async function applyCurrencyRate(rId, cId, skipFetch = false) { 
         const cElement = document.getElementById(cId);
         if (!cElement) return;
         const c = cElement.value;
         
-        // 新增：只要切換主欄位的幣別，就會儲存為最後一次選擇的幣別
+        // 只要切換主欄位的幣別，就儲存為最後一次選擇的幣別
         if (cId === 'currency' && currentProjectId) {
             localStorage.setItem(`last_curr_${currentProjectId}`, c);
         }
@@ -575,7 +607,6 @@
         document.getElementById('mRate').value=''; 
         saveSettingsAndSync(); 
     }
-    // === 結束區塊 ===
 
     function setDefaultDate() { const today = new Date().toISOString().split('T')[0]; if(document.getElementById('date')) document.getElementById('date').value = today; }
     function openNewProjectModal() { document.getElementById('pModalTitle').innerText="新旅程"; document.getElementById('editProjId').value=""; document.getElementById('pName').value=""; document.getElementById('pStart').value=""; document.getElementById('pEnd').value=""; openModal('projectModal'); }
