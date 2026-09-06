@@ -143,6 +143,10 @@
         </div>
         <div class="card" style="text-align:center;">
             <div id="totalDisplay" style="font-size:36px; font-weight:800; color:var(--danger); margin-bottom: 5px;">NT$ 0</div>
+            
+            <!-- 各支付者總金額統計 -->
+            <div id="payerTotalsDisplay" style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:15px;"></div>
+            
             <button class="btn-pill" onclick="prepareShareModal()" style="background:var(--primary); color:white; margin:10px 0; padding:10px 24px; font-size: 13px; border-radius: 12px;">🔗 查看/手動分享帳單</button>
             <div style="max-width:180px; margin:20px auto;"><canvas id="expenseChart"></canvas></div>
         </div>
@@ -162,15 +166,36 @@
     <div class="footer-signature">© 2025 LET'S GO TRAVEL! 旅遊記帳系統 | Designed by Alex Hong</div>
 </div>
 
+<!-- 所有 Modals -->
 <div id="importModal" class="modal"><div class="modal-content"><h3>📥 智慧匯入帳單</h3><p style="font-size: 11px; color: #999;">貼上 LINE 分享出的格式</p><textarea id="importInput" style="height:200px; font-family: monospace; font-size: 12px;" placeholder="貼上內容..."></textarea><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="parseImportText()">開始解析</button><button class="btn-add-only" onclick="closeModal('importModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
 <div id="shareSelectModal" class="modal"><div class="modal-content"><h3>📤 分享帳單</h3><a id="lineShareLink" href="#" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; background:var(--line); color:white; text-decoration:none; padding:14px; border-radius:12px; font-weight:bold; width:100%; box-sizing:border-box; margin-bottom:10px;">🟢 分享至 LINE</a><div style="display:flex; gap:10px;"><button class="btn-add-only" onclick="copyToClipboard()" style="background:#6c757d;">📋 複製文字</button><button class="btn-add-only" onclick="closeModal('shareSelectModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
 <div id="projectModal" class="modal"><div class="modal-content"><h3 id="pModalTitle">旅程</h3><input type="hidden" id="editProjId"><div style="text-align:left;"><label>旅程名稱</label><input type="text" id="pName"><div class="form-grid"><div><label>出發</label><input type="date" id="pStart"></div><div><label>回程</label><input type="date" id="pEnd"></div></div></div><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="handleProjectSubmit()">確定</button><button class="btn-add-only" onclick="closeModal('projectModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
 <div id="editModal" class="modal"><div class="modal-content"><h3>✏️ 編輯明細</h3><input type="hidden" id="editId"><div style="text-align:left; margin-bottom:15px;"><label>品項名稱</label><input type="text" id="eItem"></div><div class="form-grid"><div><label>日期</label><input type="date" id="eDate"></div><div><label>分類</label><select id="eCategory"><option value="飲食">🍕 飲食</option><option value="購物">🛍️ 購物</option><option value="交通">🚗 交通</option><option value="住宿">🏨 住宿</option><option value="娛樂">🎟️ 娛樂</option><option value="其他">📦 其他</option></select></div><div><label>金額</label><input type="number" id="eAmount"></div><div><label>幣別</label><select id="eCurrency" onchange="applyCurrencyRate('eRate', 'eCurrency')"></select></div><div><label>匯率</label><input type="number" id="eRate" step="0.0001"></div><div><label>方式</label><select id="ePayMethod"></select></div><div style="grid-column: span 2;"><label>支付者</label><select id="ePayer"></select></div></div><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="saveEdit()">儲存</button><button class="btn-add-only" onclick="closeModal('editModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
 
+<!-- 新增：指定付款人的區間統計 Modal -->
+<div id="payerFilterModal" class="modal">
+    <div class="modal-content">
+        <h3>🔍 統計指定區間支出</h3>
+        <p id="filterPayerName" style="font-weight:bold; color:var(--primary); font-size:18px; margin-bottom:15px;"></p>
+        <div class="form-grid">
+            <div><label>開始日期</label><input type="date" id="filterStartDate"></div>
+            <div><label>結束日期</label><input type="date" id="filterEndDate"></div>
+        </div>
+        <div style="margin-top:15px; font-size:24px; font-weight:800; color:var(--danger);" id="filterResultDisplay"></div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn-add-only" onclick="calculatePayerFilter()">計算總計</button>
+            <button class="btn-add-only" onclick="closeModal('payerFilterModal')" style="background:#eee; color:#666;">關閉</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzALDNW2aM0RWlRqiUK66LYNwc_E6v38daob0O6GWi7p8pSy8HjqYnP9md2Q9GVh_zykg/exec"; 
     let groupCode = ""; 
     let projects=[], currentProjectId=null, records=[], payers=[], payMethods=[], currencies=[], myChart=null;
+    
+    // 記錄目前正在查詢區間支出的對象
+    let currentFilterPayer = "";
 
     // --- 群組邏輯 ---
     async function joinGroup() {
@@ -251,7 +276,6 @@
             const response = await fetch(`${GAS_URL}?groupCode=${groupCode}`);
             const cloudData = await response.json();
 
-            // 🔥 關鍵修正：同步前，先備份所有的 UI 記憶狀態 (包含群組代碼、最後選擇的旅程、最後選擇的幣別與付款方式)
             const preservedSettings = {};
             for (let i = 0; i < localStorage.length; i++) {
                 const k = localStorage.key(i);
@@ -262,7 +286,6 @@
 
             localStorage.clear();
 
-            // 🔥 還原備份的 UI 記憶狀態
             Object.keys(preservedSettings).forEach(k => {
                 localStorage.setItem(k, preservedSettings[k]);
             });
@@ -271,7 +294,6 @@
                 Object.keys(cloudData).forEach(key => localStorage.setItem(key, JSON.stringify(cloudData[key])));
                 projects = JSON.parse(localStorage.getItem('trip_projects')) || [];
                 
-                // 自動排序：依照出發日期排序 (最新在最上面)
                 projects.sort((a, b) => {
                     let dateA = a.start ? new Date(a.start).getTime() : 0;
                     let dateB = b.start ? new Date(b.start).getTime() : 0;
@@ -285,7 +307,6 @@
             if(!isQuiet) hideOverlay();
             loadProjectList(); initYearSelector();
 
-            // 自動進入上次記錄的旅程
             if (!isQuiet) {
                 const lastProjId = localStorage.getItem(`last_project_id_${groupCode}`);
                 if (lastProjId && projects.find(p => p.id === parseInt(lastProjId))) {
@@ -304,7 +325,6 @@
         const inviteCode = urlParams.get('g');
         const saved = localStorage.getItem('last_group_code');
         
-        // 確保儲存的群組代碼是有效的，如果有效直接登入
         if (inviteCode) {
             groupCode = inviteCode.toUpperCase();
             localStorage.setItem('last_group_code', groupCode);
@@ -316,7 +336,6 @@
         }
     };
 
-    // 保存最後使用的付款方式
     function saveLastMethod() {
         if (currentProjectId) {
             localStorage.setItem(`last_method_${currentProjectId}`, document.getElementById('payMethod').value);
@@ -328,7 +347,6 @@
         const amtInput = document.getElementById('amount'), itemInput = document.getElementById('itemName'), amt = parseFloat(amtInput.value);
         if(!amt) return;
 
-        // 在新增記帳時，確保強制記錄當下選擇的幣別和付款方式
         localStorage.setItem(`last_curr_${currentProjectId}`, document.getElementById('currency').value);
         localStorage.setItem(`last_method_${currentProjectId}`, document.getElementById('payMethod').value);
 
@@ -355,6 +373,50 @@
         showTopStatus("✅ 儲存成功", "success");
 
         if(shouldShare) { const txt = generateFullText(); window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(txt)}`; }
+    }
+
+    // --- 區間查詢邏輯 ---
+    function openPayerFilter(payerName) {
+        currentFilterPayer = payerName;
+        document.getElementById('filterPayerName').innerText = `👤 支付者：${payerName}`;
+        
+        // 嘗試帶入當前旅程的日期作為預設區間
+        const proj = projects.find(p => p.id === currentProjectId);
+        if (proj && proj.start && proj.end) {
+            document.getElementById('filterStartDate').value = proj.start;
+            document.getElementById('filterEndDate').value = proj.end;
+        } else {
+            document.getElementById('filterStartDate').value = "";
+            document.getElementById('filterEndDate').value = "";
+        }
+        
+        // 清空之前的計算結果
+        document.getElementById('filterResultDisplay').innerText = "";
+        openModal('payerFilterModal');
+    }
+
+    function calculatePayerFilter() {
+        const startDate = document.getElementById('filterStartDate').value;
+        const endDate = document.getElementById('filterEndDate').value;
+        
+        if (!startDate || !endDate) {
+            alert("請完整選擇開始與結束日期！");
+            return;
+        }
+        if (startDate > endDate) {
+            alert("開始日期不能晚於結束日期！");
+            return;
+        }
+
+        let total = 0;
+        records.forEach(r => {
+            // 確認是同一個付款人，且日期落在所選範圍內
+            if (r.payer === currentFilterPayer && r.date >= startDate && r.date <= endDate) {
+                total += Math.round(r.amount * (r.rate || 1));
+            }
+        });
+
+        document.getElementById('filterResultDisplay').innerText = `區間總計：NT$ ${total.toLocaleString()}`;
     }
 
     // --- 其他核心功能 ---
@@ -429,7 +491,7 @@
 
     function selectProject(id) {
         currentProjectId = id;
-        localStorage.setItem(`last_project_id_${groupCode}`, id); // 記住最後點擊的旅程
+        localStorage.setItem(`last_project_id_${groupCode}`, id); 
         const proj = projects.find(p => p.id === id); if(!proj) return;
         document.getElementById('current-project-name').innerText = proj.name;
         records = JSON.parse(localStorage.getItem(`records_${id}`)) || [];
@@ -442,22 +504,40 @@
 
     function render() {
         const tbody = document.getElementById('recordTableBody');
-        tbody.innerHTML = ''; let total = 0, stats = {};
+        tbody.innerHTML = ''; 
+        let total = 0, stats = {}, payerTotals = {};
+        
         records.sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id).forEach(r => {
-            const twd = Math.round(r.amount * r.rate); total += twd; stats[r.category] = (stats[r.category] || 0) + twd;
+            const twd = Math.round(r.amount * r.rate); 
+            total += twd; 
+            stats[r.category] = (stats[r.category] || 0) + twd;
+            
+            payerTotals[r.payer] = (payerTotals[r.payer] || 0) + twd;
+            
             let tagsHtml = `<span class="tag">${r.payer}</span><span class="tag">${r.category}</span><span class="tag">${r.method}</span>`;
             if (r.currency && r.currency !== 'TWD') tagsHtml += `<span class="tag" style="background:#e3f2fd; color:#1976d2;">${r.amount.toLocaleString()} ${r.currency}</span>`;
             
-            // 複製按鈕 copyRecord(${r.id})
             tbody.innerHTML += `<tr><td>${r.date.substring(5).replace('-', '/')}</td><td><b>${r.item}</b><br>${tagsHtml}</td><td style="color:var(--danger);font-weight:bold;">$${twd.toLocaleString()}</td><td style="text-align:right;"><button class="btn-pill" onclick="copyRecord(${r.id})">📋</button><button class="btn-pill" onclick="openEdit(${r.id})">✏️</button><button class="btn-pill del" onclick="deleteRecord(${r.id})">🗑️</button></td></tr>`;
         });
-        document.getElementById('totalDisplay').innerText = `NT$ ${total.toLocaleString()}`; updateChart(stats);
+        
+        document.getElementById('totalDisplay').innerText = `NT$ ${total.toLocaleString()}`; 
+        
+        // 更新支付者總額區塊，並加上 onclick 綁定日期範圍查詢功能
+        const payerContainer = document.getElementById('payerTotalsDisplay');
+        if(payerContainer) {
+            payerContainer.innerHTML = Object.keys(payerTotals).map(p => 
+                `<span onclick="openPayerFilter('${p}')" title="點擊查詢區間總計" style="font-size:12px; background:#f1f3f5; padding:5px 12px; border-radius:12px; color:#555; border: 1px solid #e9ecef; cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='#e2e6ea'" onmouseout="this.style.background='#f1f3f5'">
+                    ${p}: <b style="color:var(--text);">$${payerTotals[p].toLocaleString()}</b>
+                </span>`
+            ).join('');
+        }
+        
+        updateChart(stats);
     }
 
     function syncUI() {
         document.getElementById('payerSelect').innerHTML = payers.map(p => `<option value="${p}">${p}</option>`).join('');
         
-        // 渲染並還原最後一次使用的付款方式
         const mSelect = document.getElementById('payMethod');
         mSelect.innerHTML = payMethods.map(m => `<option value="${m}">${m}</option>`).join('');
         const lastMethod = localStorage.getItem(`last_method_${currentProjectId}`);
@@ -465,7 +545,6 @@
             mSelect.value = lastMethod;
         }
 
-        // 渲染並還原最後一次使用的幣別
         const cSelect = document.getElementById('currency');
         cSelect.innerHTML = currencies.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
         const lastCurr = localStorage.getItem(`last_curr_${currentProjectId}`);
@@ -502,7 +581,6 @@
         if(id) { const p = projects.find(x => x.id == id); Object.assign(p, { name:n, start:s, end:e }); }
         else { projects.push({ id:Date.now(), name:n, start:s, end:e }); }
         
-        // 自動排序：依照出發日期排序 (最新在最上面)
         projects.sort((a, b) => {
             let dateA = a.start ? new Date(a.start).getTime() : 0;
             let dateB = b.start ? new Date(b.start).getTime() : 0;
@@ -513,7 +591,7 @@
     }
 
     function backToProjectList() { 
-        localStorage.removeItem(`last_project_id_${groupCode}`); // 返回清單時清除記憶，這樣下次重整就不會強制進專案
+        localStorage.removeItem(`last_project_id_${groupCode}`); 
         document.getElementById('main-screen').style.display='none'; 
         document.getElementById('project-screen').style.display='block'; 
         loadProjectList(); 
@@ -530,7 +608,6 @@
         if (!cElement) return;
         const c = cElement.value;
         
-        // 只要切換主欄位的幣別，就儲存為最後一次選擇的幣別
         if (cId === 'currency' && currentProjectId) {
             localStorage.setItem(`last_curr_${currentProjectId}`, c);
         }
@@ -542,7 +619,7 @@
         if (c === 'TWD') { rateInput.value = 1; return; }
         if (t) { rateInput.value = t.rate; } 
 
-        if (skipFetch) return; // 單純 UI 同步時跳過 API 抓取
+        if (skipFetch) return;
 
         try {
             showTopStatus(`🔄 獲取 ${c} 最新匯率...`, "saving");
@@ -554,7 +631,6 @@
                     rateInput.value = liveRate.toFixed(4);
                     showTopStatus(`✅ 已更新最新匯率`, "success");
                     
-                    // 同步更新背後的管理列表匯率，確保一致性
                     if (t && t.rate !== parseFloat(liveRate.toFixed(4))) {
                         t.rate = parseFloat(liveRate.toFixed(4));
                         localStorage.setItem(`currencies_${currentProjectId}`, JSON.stringify(currencies));
@@ -577,7 +653,6 @@
         let r = parseFloat(document.getElementById('mRate').value); 
         if(!c) return; 
 
-        // 如果匯率為空且不是 TWD，呼叫 API 抓取
         if (isNaN(r) && c !== 'TWD') {
             try {
                 showTopStatus(`🔄 獲取 ${c} 匯率中...`, "saving");
@@ -595,7 +670,7 @@
         if (isNaN(r) && c === 'TWD') r = 1;
 
         if (isNaN(r)) {
-            alert('無法自動獲取匯率，請手動輸入');
+            alert('無法自動獲取匯率，請手手動輸入');
             return;
         }
 
@@ -636,7 +711,6 @@
     function saveEdit() { const id = document.getElementById('editId').value, r = records.find(x => x.id == id); if (r) { Object.assign(r, { item: document.getElementById('eItem').value, date: document.getElementById('eDate').value, category: document.getElementById('eCategory').value, amount: parseFloat(document.getElementById('eAmount').value), currency: document.getElementById('eCurrency').value, rate: parseFloat(document.getElementById('eRate').value) || 1, method: document.getElementById('ePayMethod').value, payer: document.getElementById('ePayer').value }); saveAndRefresh(); } closeModal('editModal'); }
     function deleteRecord(id) { if(!confirm('刪除紀錄？')) return; records = records.filter(r => r.id !== id); saveAndRefresh(); }
     
-    // 複製功能邏輯
     function copyRecord(id) {
         const r = records.find(x => x.id == id);
         if (!r) return;
