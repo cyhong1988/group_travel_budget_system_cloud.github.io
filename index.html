@@ -182,6 +182,16 @@
             <div><label>結束日期</label><input type="date" id="filterEndDate"></div>
         </div>
         <div style="margin-top:15px; font-size:24px; font-weight:800; color:var(--danger);" id="filterResultDisplay"></div>
+        
+        <!-- 新增：查看細項按鈕與明細列表區塊 -->
+        <button id="btnShowFilterDetails" class="btn-pill" style="display:none; margin: 15px auto 5px auto; background: var(--primary); color: white; padding: 8px 20px;" onclick="toggleFilterDetails()">📋 展開/隱藏明細</button>
+        <div id="filterDetailsContainer" style="display:none; margin-top: 10px; max-height: 250px; overflow-y: auto; text-align: left; font-size: 13px; border: 1px solid #f0f0f0; padding: 10px; border-radius: 12px; background: #fafafa;">
+            <table style="width:100%; border-collapse: collapse;">
+                <thead><tr><th style="padding-bottom:5px; border-bottom:1px solid #ddd;">日期</th><th style="padding-bottom:5px; border-bottom:1px solid #ddd;">品項</th><th style="text-align:right; padding-bottom:5px; border-bottom:1px solid #ddd;">金額(NT)</th></tr></thead>
+                <tbody id="filterDetailsBody"></tbody>
+            </table>
+        </div>
+
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button class="btn-add-only" onclick="calculatePayerFilter()">計算總計</button>
             <button class="btn-add-only" onclick="closeModal('payerFilterModal')" style="background:#eee; color:#666;">關閉</button>
@@ -380,7 +390,6 @@
         currentFilterPayer = payerName;
         document.getElementById('filterPayerName').innerText = `👤 支付者：${payerName}`;
         
-        // 嘗試帶入當前旅程的日期作為預設區間
         const proj = projects.find(p => p.id === currentProjectId);
         if (proj && proj.start && proj.end) {
             document.getElementById('filterStartDate').value = proj.start;
@@ -390,8 +399,13 @@
             document.getElementById('filterEndDate').value = "";
         }
         
-        // 清空之前的計算結果
         document.getElementById('filterResultDisplay').innerText = "";
+        
+        // 隱藏明細清單與按鈕
+        document.getElementById('btnShowFilterDetails').style.display = 'none';
+        document.getElementById('filterDetailsContainer').style.display = 'none';
+        document.getElementById('filterDetailsBody').innerHTML = '';
+        
         openModal('payerFilterModal');
     }
 
@@ -409,14 +423,40 @@
         }
 
         let total = 0;
-        records.forEach(r => {
-            // 確認是同一個付款人，且日期落在所選範圍內
-            if (r.payer === currentFilterPayer && r.date >= startDate && r.date <= endDate) {
-                total += Math.round(r.amount * (r.rate || 1));
-            }
+        let detailsHtml = "";
+
+        // 過濾並排序該區間內該付款人的紀錄
+        const filteredRecords = records.filter(r => r.payer === currentFilterPayer && r.date >= startDate && r.date <= endDate)
+                                       .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+
+        filteredRecords.forEach(r => {
+            const twd = Math.round(r.amount * (r.rate || 1));
+            total += twd;
+            
+            // 組合明細 HTML
+            detailsHtml += `<tr>
+                <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">${r.date.substring(5).replace('-', '/')}</td>
+                <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;"><b>${r.item}</b><br><span style="font-size:10px; color:#999;">${r.category} | ${r.method}</span></td>
+                <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align:right; font-weight:bold; color:var(--danger);">$${twd.toLocaleString()}</td>
+            </tr>`;
         });
 
         document.getElementById('filterResultDisplay').innerText = `區間總計：NT$ ${total.toLocaleString()}`;
+        
+        // 渲染明細並顯示「展開/隱藏明細」的按鈕，預設先隱藏列表
+        document.getElementById('filterDetailsBody').innerHTML = detailsHtml || '<tr><td colspan="3" style="text-align:center; color:#999; padding:15px;">查無明細資料</td></tr>';
+        document.getElementById('btnShowFilterDetails').style.display = 'inline-block';
+        document.getElementById('filterDetailsContainer').style.display = 'none';
+    }
+    
+    // 切換明細顯示與隱藏
+    function toggleFilterDetails() {
+        const container = document.getElementById('filterDetailsContainer');
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+        } else {
+            container.style.display = 'none';
+        }
     }
 
     // --- 其他核心功能 ---
@@ -522,7 +562,6 @@
         
         document.getElementById('totalDisplay').innerText = `NT$ ${total.toLocaleString()}`; 
         
-        // 更新支付者總額區塊，並加上 onclick 綁定日期範圍查詢功能
         const payerContainer = document.getElementById('payerTotalsDisplay');
         if(payerContainer) {
             payerContainer.innerHTML = Object.keys(payerTotals).map(p => 
