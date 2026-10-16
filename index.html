@@ -51,20 +51,91 @@
         .drag-handle { cursor: grab; padding: 10px 20px; color: #ccc; font-size: 24px; position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: center; z-index: 10; touch-action: none; }
         .project-actions { position: absolute; left: 15px; bottom: 12px; display: flex; gap: 8px; }
         h2 { margin: 0 0 15px 0; font-size: 1.2rem; border-left: 5px solid var(--primary); padding-left: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-pill { background: var(--btn-bg); color: #4a90e2; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: 600; margin: 0 2px; }
+        .btn-pill { background: var(--btn-bg); color: #4a90e2; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: 600; margin: 0 2px; transition: 0.2s; }
+        .btn-pill:active { transform: scale(0.96); }
         .btn-pill.del { color: var(--danger); background: #fff1f0; }
-        .btn-add-only { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1; }
-        .btn-line-direct { background: var(--line); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1.2; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-add-only { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1; transition: 0.2s; }
+        .btn-add-only:active { opacity: 0.85; }
+        .btn-line-direct { background: var(--line); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1.2; display: flex; align-items: center; justify-content: center; gap: 5px; transition: 0.2s; }
+        .btn-line-direct:active { opacity: 0.85; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        input, select, textarea { padding: 12px; border: 1.5px solid #f0f0f0; border-radius: 12px; font-size: 14px; width: 100%; box-sizing: border-box; outline: none; }
+        input, select, textarea { padding: 12px; border: 1.5px solid #f0f0f0; border-radius: 12px; font-size: 14px; width: 100%; box-sizing: border-box; outline: none; transition: border-color 0.2s; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); }
         label { font-size: 11px; color: var(--gray); font-weight: bold; margin-bottom: 5px; display: block; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         td, th { padding: 12px 4px; border-bottom: 1px solid #f8f9fa; text-align: left; }
         .tag { font-size: 9px; background: #f1f3f5; padding: 2px 6px; border-radius: 6px; color: #666; margin-right: 4px; display: inline-block; margin-top: 4px; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; padding: 15px; backdrop-filter: blur(4px); }
-        .modal-content { background: white; max-width: 420px; margin: 20px auto; padding: 25px; border-radius: 24px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal-content { background: white; max-width: 420px; margin: 20px auto; padding: 25px; border-radius: 24px; text-align: center; max-height: 90vh; overflow-y: auto; position: relative; }
         .mgmt-list { max-height: 180px; overflow-y: auto; margin-top: 10px; border: 1px solid #f0f0f0; padding: 8px; border-radius: 14px; background: #fafafa; }
         .mgmt-chip { display: flex; align-items: center; background: #fff; padding: 10px 14px; border-radius: 12px; font-size: 13px; border: 1px solid #f0f0f0; margin-bottom: 8px; }
+
+        /* 照片上傳與預覽專用樣式 */
+        .photo-upload-box {
+            border: 1.5px dashed #dce1e6;
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fafbfc;
+            gap: 10px;
+        }
+        .photo-upload-btn {
+            background: #edf2f7;
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .photo-upload-btn:hover { background: #e2e8f0; }
+        .photo-preview-wrap {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+        .photo-thumb {
+            width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .photo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 10px;
+            background: #e8f4fd;
+            color: var(--primary);
+            padding: 2px 7px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 4px;
+            vertical-align: middle;
+            border: 1px solid #bae0ff;
+        }
+        .photo-badge:hover { background: #d0ebff; }
+        .full-photo-img {
+            max-width: 100%;
+            max-height: 65vh;
+            border-radius: 12px;
+            object-fit: contain;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin: 10px 0;
+        }
+
         @media (max-width: 500px) { .form-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -135,6 +206,22 @@
                 <div><label>幣別</label><select id="currency" onchange="applyCurrencyRate('rate', 'currency')"></select></div>
                 <div><label>匯率</label><input type="number" id="rate" step="0.0001"></div>
                 <div><label>方式</label><select id="payMethod" onchange="saveLastMethod()"></select></div>
+                
+                <!-- 新增：帳單明細照片上傳欄位 -->
+                <div style="grid-column: 1 / -1;">
+                    <label>📷 帳單明細照片 (選填，系統自動壓縮同步)</label>
+                    <div class="photo-upload-box">
+                        <label for="photoInput" class="photo-upload-btn" style="margin:0;">
+                            📸 選擇或拍攝照片
+                        </label>
+                        <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this, 'add')">
+                        <span id="addPhotoHint" style="font-size:11px; color:#aaa;">尚未選擇照片</span>
+                        <div id="addPhotoPreviewWrap" class="photo-preview-wrap">
+                            <img id="addPhotoThumb" class="photo-thumb" src="" alt="預覽" onclick="previewRawPhoto(currentAddPhoto)">
+                            <button type="button" class="btn-pill del" onclick="clearPhoto('add')">✕ 移除</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div style="display:flex; gap:10px;">
                 <button class="btn-add-only" onclick="handleAddRecord(false)">僅新增</button>
@@ -170,20 +257,57 @@
 <div id="importModal" class="modal"><div class="modal-content"><h3>📥 智慧匯入帳單</h3><p style="font-size: 11px; color: #999;">貼上 LINE 分享出的格式</p><textarea id="importInput" style="height:200px; font-family: monospace; font-size: 12px;" placeholder="貼上內容..."></textarea><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="parseImportText()">開始解析</button><button class="btn-add-only" onclick="closeModal('importModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
 <div id="shareSelectModal" class="modal"><div class="modal-content"><h3>📤 分享帳單</h3><a id="lineShareLink" href="#" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; background:var(--line); color:white; text-decoration:none; padding:14px; border-radius:12px; font-weight:bold; width:100%; box-sizing:border-box; margin-bottom:10px;">🟢 分享至 LINE</a><div style="display:flex; gap:10px;"><button class="btn-add-only" onclick="copyToClipboard()" style="background:#6c757d;">📋 複製文字</button><button class="btn-add-only" onclick="closeModal('shareSelectModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
 <div id="projectModal" class="modal"><div class="modal-content"><h3 id="pModalTitle">旅程</h3><input type="hidden" id="editProjId"><div style="text-align:left;"><label>旅程名稱</label><input type="text" id="pName"><div class="form-grid"><div><label>出發</label><input type="date" id="pStart"></div><div><label>回程</label><input type="date" id="pEnd"></div></div></div><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="handleProjectSubmit()">確定</button><button class="btn-add-only" onclick="closeModal('projectModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
-<div id="editModal" class="modal"><div class="modal-content"><h3>✏️ 編輯明細</h3><input type="hidden" id="editId"><div style="text-align:left; margin-bottom:15px;"><label>品項名稱</label><input type="text" id="eItem"></div><div class="form-grid"><div><label>日期</label><input type="date" id="eDate"></div><div><label>分類</label><select id="eCategory"><option value="飲食">🍕 飲食</option><option value="購物">🛍️ 購物</option><option value="交通">🚗 交通</option><option value="住宿">🏨 住宿</option><option value="娛樂">🎟️ 娛樂</option><option value="其他">📦 其他</option></select></div><div><label>金額</label><input type="number" id="eAmount"></div><div><label>幣別</label><select id="eCurrency" onchange="applyCurrencyRate('eRate', 'eCurrency')"></select></div><div><label>匯率</label><input type="number" id="eRate" step="0.0001"></div><div><label>方式</label><select id="ePayMethod"></select></div><div style="grid-column: span 2;"><label>支付者</label><select id="ePayer"></select></div></div><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-add-only" onclick="saveEdit()">儲存</button><button class="btn-add-only" onclick="closeModal('editModal')" style="background:#eee; color:#666;">取消</button></div></div></div>
 
-<!-- 新增：指定付款人的區間統計 Modal -->
+<!-- 編輯明細 Modal (含照片編輯) -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3>✏️ 編輯明細</h3>
+        <input type="hidden" id="editId">
+        <div style="text-align:left; margin-bottom:15px;"><label>品項名稱</label><input type="text" id="eItem"></div>
+        <div class="form-grid" style="text-align:left;">
+            <div><label>日期</label><input type="date" id="eDate"></div>
+            <div><label>分類</label><select id="eCategory"><option value="飲食">🍕 飲食</option><option value="購物">🛍️ 購物</option><option value="交通">🚗 交通</option><option value="住宿">🏨 住宿</option><option value="娛樂">🎟️ 娛樂</option><option value="其他">📦 其他</option></select></div>
+            <div><label>金額</label><input type="number" id="eAmount"></div>
+            <div><label>幣別</label><select id="eCurrency" onchange="applyCurrencyRate('eRate', 'eCurrency')"></select></div>
+            <div><label>匯率</label><input type="number" id="eRate" step="0.0001"></div>
+            <div><label>方式</label><select id="ePayMethod"></select></div>
+            <div style="grid-column: 1 / -1;"><label>支付者</label><select id="ePayer"></select></div>
+            
+            <!-- 編輯明細的照片區塊 -->
+            <div style="grid-column: 1 / -1;">
+                <label>📷 帳單明細照片</label>
+                <div class="photo-upload-box">
+                    <label for="ePhotoInput" class="photo-upload-btn" style="margin:0;">
+                        📸 更換/上傳照片
+                    </label>
+                    <input type="file" id="ePhotoInput" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this, 'edit')">
+                    <span id="editPhotoHint" style="font-size:11px; color:#aaa;">無照片</span>
+                    <div id="editPhotoPreviewWrap" class="photo-preview-wrap">
+                        <img id="editPhotoThumb" class="photo-thumb" src="" alt="預覽" onclick="previewRawPhoto(currentEditPhoto)">
+                        <button type="button" class="btn-pill del" onclick="clearPhoto('edit')">✕ 移除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn-add-only" onclick="saveEdit()">儲存</button>
+            <button class="btn-add-only" onclick="closeModal('editModal')" style="background:#eee; color:#666;">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 指定付款人的區間統計 Modal -->
 <div id="payerFilterModal" class="modal">
     <div class="modal-content">
         <h3>🔍 統計指定區間支出</h3>
         <p id="filterPayerName" style="font-weight:bold; color:var(--primary); font-size:18px; margin-bottom:15px;"></p>
-        <div class="form-grid">
+        <div class="form-grid" style="text-align:left;">
             <div><label>開始日期</label><input type="date" id="filterStartDate"></div>
             <div><label>結束日期</label><input type="date" id="filterEndDate"></div>
         </div>
         <div style="margin-top:15px; font-size:24px; font-weight:800; color:var(--danger);" id="filterResultDisplay"></div>
         
-        <!-- 新增：查看細項按鈕與明細列表區塊 -->
+        <!-- 查看細項按鈕與明細列表區塊 -->
         <button id="btnShowFilterDetails" class="btn-pill" style="display:none; margin: 15px auto 5px auto; background: var(--primary); color: white; padding: 8px 20px;" onclick="toggleFilterDetails()">📋 展開/隱藏明細</button>
         <div id="filterDetailsContainer" style="display:none; margin-top: 10px; max-height: 250px; overflow-y: auto; text-align: left; font-size: 13px; border: 1px solid #f0f0f0; padding: 10px; border-radius: 12px; background: #fafafa;">
             <table style="width:100%; border-collapse: collapse;">
@@ -199,6 +323,21 @@
     </div>
 </div>
 
+<!-- 新增：檢視帳單照片燈箱 Modal -->
+<div id="photoViewModal" class="modal" style="z-index: 1050;">
+    <div class="modal-content" style="max-width: 500px; padding: 20px;">
+        <h3 id="photoViewTitle" style="margin: 0 0 5px 0; font-size: 16px;">📷 帳單明細照片</h3>
+        <div id="photoViewMeta" style="font-size: 12px; color: var(--gray); margin-bottom: 10px;"></div>
+        <div style="background: #f8f9fa; border-radius: 14px; padding: 8px; display: flex; align-items: center; justify-content: center; min-height: 200px;">
+            <img id="photoViewImg" class="full-photo-img" src="" alt="帳單明細照片">
+        </div>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <a id="photoDownloadBtn" href="#" download="receipt.jpg" class="btn-add-only" style="text-decoration:none; background:#6c757d; display:flex; align-items:center; justify-content:center;">⬇️ 下載照片</a>
+            <button class="btn-add-only" onclick="closeModal('photoViewModal')" style="background:#eee; color:#666;">關閉</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzALDNW2aM0RWlRqiUK66LYNwc_E6v38daob0O6GWi7p8pSy8HjqYnP9md2Q9GVh_zykg/exec"; 
     let groupCode = ""; 
@@ -206,6 +345,124 @@
     
     // 記錄目前正在查詢區間支出的對象
     let currentFilterPayer = "";
+
+    // 暫存新增與編輯中的照片 (壓縮後 Base64)
+    let currentAddPhoto = null;
+    let currentEditPhoto = null;
+
+    // 點擊 Modal 背景關閉視窗
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+        }
+    });
+
+    // --- 照片壓縮與上傳邏輯 (相容既有 LocalStorage 與 GAS 架構) ---
+    function compressImageFile(file, maxDimension = 800, quality = 0.65) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height) {
+                        if (width > maxDimension) {
+                            height = Math.round(height * (maxDimension / width));
+                            width = maxDimension;
+                        }
+                    } else {
+                        if (height > maxDimension) {
+                            width = Math.round(width * (maxDimension / height));
+                            height = maxDimension;
+                        }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    resolve(dataUrl);
+                };
+                img.onerror = reject;
+                img.src = event.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function handlePhotoUpload(inputEl, mode) {
+        const file = inputEl.files && inputEl.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            alert('請選擇圖片檔案！');
+            inputEl.value = '';
+            return;
+        }
+        try {
+            showTopStatus("⏳ 正在處理並壓縮照片...", "saving");
+            const compressedDataUrl = await compressImageFile(file, 800, 0.65);
+            if (mode === 'add') {
+                currentAddPhoto = compressedDataUrl;
+                document.getElementById('addPhotoThumb').src = compressedDataUrl;
+                document.getElementById('addPhotoPreviewWrap').style.display = 'flex';
+                document.getElementById('addPhotoHint').style.display = 'none';
+            } else {
+                currentEditPhoto = compressedDataUrl;
+                document.getElementById('editPhotoThumb').src = compressedDataUrl;
+                document.getElementById('editPhotoPreviewWrap').style.display = 'flex';
+                document.getElementById('editPhotoHint').style.display = 'none';
+            }
+            showTopStatus("✅ 照片準備完成", "success");
+        } catch (err) {
+            console.error("照片處理失敗", err);
+            alert("照片處理失敗，請換一張圖片重試。");
+        }
+    }
+
+    function clearPhoto(mode) {
+        if (mode === 'add') {
+            currentAddPhoto = null;
+            const input = document.getElementById('photoInput');
+            if (input) input.value = '';
+            document.getElementById('addPhotoThumb').src = '';
+            document.getElementById('addPhotoPreviewWrap').style.display = 'none';
+            document.getElementById('addPhotoHint').style.display = 'inline';
+        } else {
+            currentEditPhoto = null;
+            const input = document.getElementById('ePhotoInput');
+            if (input) input.value = '';
+            document.getElementById('editPhotoThumb').src = '';
+            document.getElementById('editPhotoPreviewWrap').style.display = 'none';
+            document.getElementById('editPhotoHint').style.display = 'inline';
+        }
+    }
+
+    function viewRecordPhoto(id) {
+        const r = records.find(x => x.id == id);
+        if (!r || !r.photo) return;
+        const twd = Math.round(r.amount * (r.rate || 1));
+        document.getElementById('photoViewTitle').innerText = `📷 ${r.item}`;
+        document.getElementById('photoViewMeta').innerText = `${r.date} ｜ ${r.payer} ｜ NT$ ${twd.toLocaleString()}`;
+        document.getElementById('photoViewImg').src = r.photo;
+        document.getElementById('photoDownloadBtn').href = r.photo;
+        document.getElementById('photoDownloadBtn').download = `帳單_${r.date}_${r.item}.jpg`;
+        openModal('photoViewModal');
+    }
+
+    function previewRawPhoto(dataUrl) {
+        if (!dataUrl) return;
+        document.getElementById('photoViewTitle').innerText = `📷 照片預覽`;
+        document.getElementById('photoViewMeta').innerText = `尚未儲存之帳單照片`;
+        document.getElementById('photoViewImg').src = dataUrl;
+        document.getElementById('photoDownloadBtn').href = dataUrl;
+        document.getElementById('photoDownloadBtn').download = `帳單預覽.jpg`;
+        openModal('photoViewModal');
+    }
 
     // --- 群組邏輯 ---
     async function joinGroup() {
@@ -357,6 +614,8 @@
         const amtInput = document.getElementById('amount'), itemInput = document.getElementById('itemName'), amt = parseFloat(amtInput.value);
         if(!amt) return;
 
+        const photoToSave = currentAddPhoto;
+
         localStorage.setItem(`last_curr_${currentProjectId}`, document.getElementById('currency').value);
         localStorage.setItem(`last_method_${currentProjectId}`, document.getElementById('payMethod').value);
 
@@ -372,7 +631,8 @@
             currency: document.getElementById('currency').value, 
             rate: parseFloat(document.getElementById('rate').value) || 1, 
             payer: document.getElementById('payerSelect').value, 
-            method: document.getElementById('payMethod').value 
+            method: document.getElementById('payMethod').value,
+            photo: photoToSave || null
         };
         records.push(newRec);
         localStorage.setItem(`records_${currentProjectId}`, JSON.stringify(records)); 
@@ -380,6 +640,7 @@
         await syncCloud();
 
         amtInput.value = ''; itemInput.value = '';
+        clearPhoto('add');
         showTopStatus("✅ 儲存成功", "success");
 
         if(shouldShare) { const txt = generateFullText(); window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(txt)}`; }
@@ -432,11 +693,12 @@
         filteredRecords.forEach(r => {
             const twd = Math.round(r.amount * (r.rate || 1));
             total += twd;
+            const photoBtn = r.photo ? `<span class="photo-badge" onclick="viewRecordPhoto(${r.id})">🖼️ 照片</span>` : '';
             
             // 組合明細 HTML
             detailsHtml += `<tr>
                 <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">${r.date.substring(5).replace('-', '/')}</td>
-                <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;"><b>${r.item}</b><br><span style="font-size:10px; color:#999;">${r.category} | ${r.method}</span></td>
+                <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;"><b>${r.item}</b>${photoBtn}<br><span style="font-size:10px; color:#999;">${r.category} | ${r.method}</span></td>
                 <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align:right; font-weight:bold; color:var(--danger);">$${twd.toLocaleString()}</td>
             </tr>`;
         });
@@ -539,6 +801,7 @@
         payMethods = JSON.parse(localStorage.getItem(`methods_${id}`)) || ["💵 現金", "💳 刷卡"];
         currencies = JSON.parse(localStorage.getItem(`currencies_${id}`)) || [{code:'TWD', rate:1}, {code:'JPY', rate:0.21}];
         document.getElementById('project-screen').style.display='none'; document.getElementById('main-screen').style.display='block';
+        clearPhoto('add');
         syncUI(); render(); setDefaultDate();
     }
 
@@ -557,7 +820,9 @@
             let tagsHtml = `<span class="tag">${r.payer}</span><span class="tag">${r.category}</span><span class="tag">${r.method}</span>`;
             if (r.currency && r.currency !== 'TWD') tagsHtml += `<span class="tag" style="background:#e3f2fd; color:#1976d2;">${r.amount.toLocaleString()} ${r.currency}</span>`;
             
-            tbody.innerHTML += `<tr><td>${r.date.substring(5).replace('-', '/')}</td><td><b>${r.item}</b><br>${tagsHtml}</td><td style="color:var(--danger);font-weight:bold;">$${twd.toLocaleString()}</td><td style="text-align:right;"><button class="btn-pill" onclick="copyRecord(${r.id})">📋</button><button class="btn-pill" onclick="openEdit(${r.id})">✏️</button><button class="btn-pill del" onclick="deleteRecord(${r.id})">🗑️</button></td></tr>`;
+            const photoBadgeHtml = r.photo ? `<span class="photo-badge" onclick="viewRecordPhoto(${r.id})" title="點擊檢視帳單照片">🖼️ 照片</span>` : '';
+            
+            tbody.innerHTML += `<tr><td>${r.date.substring(5).replace('-', '/')}</td><td><b>${r.item}</b>${photoBadgeHtml}<br>${tagsHtml}</td><td style="color:var(--danger);font-weight:bold;">$${twd.toLocaleString()}</td><td style="text-align:right; white-space:nowrap;"><button class="btn-pill" onclick="copyRecord(${r.id})" title="複製">📋</button><button class="btn-pill" onclick="openEdit(${r.id})" title="編輯">✏️</button><button class="btn-pill del" onclick="deleteRecord(${r.id})" title="刪除">🗑️</button></td></tr>`;
         });
         
         document.getElementById('totalDisplay').innerText = `NT$ ${total.toLocaleString()}`; 
@@ -709,7 +974,7 @@
         if (isNaN(r) && c === 'TWD') r = 1;
 
         if (isNaN(r)) {
-            alert('無法自動獲取匯率，請手手動輸入');
+            alert('無法自動獲取匯率，請手動輸入');
             return;
         }
 
@@ -744,10 +1009,42 @@
         const ePayer = document.getElementById('ePayer');
         ePayer.innerHTML = payers.map(p => `<option value="${p}">${p}</option>`).join('');
         ePayer.value = r.payer;
+
+        // 載入該筆紀錄的照片狀態
+        const ePhotoInput = document.getElementById('ePhotoInput');
+        if (ePhotoInput) ePhotoInput.value = '';
+        if (r.photo) {
+            currentEditPhoto = r.photo;
+            document.getElementById('editPhotoThumb').src = r.photo;
+            document.getElementById('editPhotoPreviewWrap').style.display = 'flex';
+            document.getElementById('editPhotoHint').style.display = 'none';
+        } else {
+            clearPhoto('edit');
+        }
+
         openModal('editModal');
     }
 
-    function saveEdit() { const id = document.getElementById('editId').value, r = records.find(x => x.id == id); if (r) { Object.assign(r, { item: document.getElementById('eItem').value, date: document.getElementById('eDate').value, category: document.getElementById('eCategory').value, amount: parseFloat(document.getElementById('eAmount').value), currency: document.getElementById('eCurrency').value, rate: parseFloat(document.getElementById('eRate').value) || 1, method: document.getElementById('ePayMethod').value, payer: document.getElementById('ePayer').value }); saveAndRefresh(); } closeModal('editModal'); }
+    function saveEdit() { 
+        const id = document.getElementById('editId').value, r = records.find(x => x.id == id); 
+        if (r) { 
+            Object.assign(r, { 
+                item: document.getElementById('eItem').value, 
+                date: document.getElementById('eDate').value, 
+                category: document.getElementById('eCategory').value, 
+                amount: parseFloat(document.getElementById('eAmount').value), 
+                currency: document.getElementById('eCurrency').value, 
+                rate: parseFloat(document.getElementById('eRate').value) || 1, 
+                method: document.getElementById('ePayMethod').value, 
+                payer: document.getElementById('ePayer').value,
+                photo: currentEditPhoto || null
+            }); 
+            saveAndRefresh(); 
+            showTopStatus("✅ 修改已儲存", "success");
+        } 
+        closeModal('editModal'); 
+    }
+    
     function deleteRecord(id) { if(!confirm('刪除紀錄？')) return; records = records.filter(r => r.id !== id); saveAndRefresh(); }
     
     function copyRecord(id) {
